@@ -7,7 +7,7 @@ mcp = MCPServer("manuals", instructions="Search the Cryonix 80 service manual.")
 
 
 def search(call: Call, query: str) -> dict:
-    sections = call.get("/manuals/search", q=query).json()
+    sections = call.data("/manuals/search", q=query)
     call.log("served", query=query, sections=[s["id"] for s in sections])
     return {"sections": sections}
 

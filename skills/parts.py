@@ -7,7 +7,7 @@ from datetime import date
 from mcp.server.mcpserver import Context, MCPServer
 
 from harness.rules import rules
-from skills._skill import Call, blocked, run, today
+from skills._skill import Call, blocked, latest_fresh, run, seg, today
 
 VERSION = os.environ.get("PARTS_SKILL_VERSION", "1.0")
 mcp = MCPServer("parts", instructions="Propose a parts order; every proposal is checked against the records.")
@@ -42,12 +42,12 @@ def check(part: dict | None, instrument: dict, records: list[dict], latest: dict
         return "not_in_catalog", "R-ORD-2"
     if revision_of(instrument) not in part["fits_revisions"]:
         return "wrong_revision", "R-ORD-1"
-    if qty < 1 or qty > rules()["ordering"]["max_qty_per_part"]:
+    if qty < 1 or qty > rules()["ordering"]["max_qty_per_part"]:  # R-ORD-5 covers any quantity outside 1..max
         return "quantity_over_limit", "R-ORD-5"
     window = rules()["diagnosis"]["recent_replacement_days"]
     if any(part["part_number"] in r.get("parts_replaced", []) and (today() - date.fromisoformat(r["date"])).days <= window for r in records):
         return "replaced_recently", "R-ORD-6"
-    if rules()["ordering"]["evidence"][part["part_number"]] not in evidence(latest):
+    if rules()["ordering"]["evidence"].get(part["part_number"]) not in evidence(latest):
         return "evidence_missing", "R-ORD-7"
     return None
 
@@ -59,15 +59,16 @@ def chargeable(instrument: dict) -> bool:
 
 
 def propose(call: Call, serial: str, part_number: str, qty: int = 1) -> dict:
-    r = call.get(f"/instruments/{serial}")
+    r = call.get(f"/instruments/{seg(serial)}")
     if stop := blocked(r):
         return stop
     instrument = r.json()
-    p = call.get(f"/parts/{part_number}")
+    p = call.get(f"/parts/{seg(part_number)}")
+    if p.status_code != 404:
+        p.raise_for_status()  # a catalog outage is an error, never "not in catalog"
     part = p.json() if p.status_code == 200 else None
-    records = call.get("/service-records", serial=serial).json()
-    telemetry = call.get("/telemetry", serial=serial).json()
-    latest = telemetry[-1] if telemetry and (today() - date.fromisoformat(telemetry[-1]["date"])).days <= rules()["diagnosis"]["telemetry_stale_days"] else None
+    records = call.data("/service-records", serial=serial)
+    latest = latest_fresh(call.data("/telemetry", serial=serial))
 
     if refusal := check(part, instrument, records, latest, qty):
         reason, rule = refusal
@@ -75,7 +76,7 @@ def propose(call: Call, serial: str, part_number: str, qty: int = 1) -> dict:
         return {"accepted": False, "reason": reason, "rule": rule}
 
     pays = chargeable(instrument)
-    proposal = {"proposal_id": f"P-{call.trace}-{part_number}", "serial": serial, "part_number": part_number, "name": part["name"],
+    proposal = {"proposal_id": f"P-{call.trace}-{part['part_number']}", "serial": instrument["serial"], "part_number": part["part_number"], "name": part["name"],
                 "qty": qty, "price_eur": part["price_eur"], "chargeable": pays, "state": "pending_approval"}
     call.log("proposed", skill_version=VERSION, proposal=proposal)
     return {"accepted": True, "proposal": proposal, "flags": ["chargeable_needs_po"] if pays else []}
