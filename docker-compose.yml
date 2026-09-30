@@ -17,3 +17,21 @@ services:
     <<: *app
     command: ["uvicorn", "dataproducts.app:app", "--host", "0.0.0.0", "--port", "8001"]
     ports: ["8001:8001"]
+
+  skill-context:                 # MCP skill get_instrument_context (T2)
+    <<: *app
+    command: ["python", "-m", "skills.instrument_context"]
+    environment: {DATA_URL: "http://dataproducts:8001"}
+    ports: ["8101:8101"]
+
+  skill-manuals:                 # MCP skill search_manuals (T1)
+    <<: *app
+    command: ["python", "-m", "skills.manuals"]
+    environment: {DATA_URL: "http://dataproducts:8001"}
+    ports: ["8102:8102"]
+
+  skill-parts:                   # MCP skill propose_parts_order (T3)
+    <<: *app
+    command: ["python", "-m", "skills.parts"]
+    environment: {DATA_URL: "http://dataproducts:8001"}
+    ports: ["8103:8103"]

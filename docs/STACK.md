@@ -21,4 +21,4 @@ Chosen after the data was finished (D14), so the data never depended on it.
 
 **Harness = a small shared library every component imports** (agent runner, skills, data products): badge handling, tier checks, rules, audit writing. Pods import it instead of writing their own plumbing.
 
-**Deterministic failing gate (G2):** candidate v0.4 ships `propose_parts_order` with a boundary bug (`serial <= 5500` instead of `< 5000`) → 5123 treated as rev A → correct GK-80-B rejected → G3 fails with any model.
+**Deterministic failing gate (G3):** candidate v0.4 ships `propose_parts_order` with a boundary bug (`serial <= 5500` instead of `< 5000`) → 5123 treated as rev A → correct GK-80-B rejected → G3 fails with any model.
