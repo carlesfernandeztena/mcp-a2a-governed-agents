@@ -1,0 +1,18 @@
+# Registry of skills and agents. Tiers are computed from manifests (R-RSK-1) — nobody declares them.
+# `certified_tier` is written by the promotion step (evals/run.py) after all gates pass (R-CRT-1).
+agents:
+  triage-agent:
+    owner: service-pod
+    version: "1.0"
+    manifest: [get_instrument_context, search_manuals, propose_parts_order]
+    certified_tier: 3
+  quick-lookup:                     # Consuelo's composition (SC5)
+    owner: consuelo
+    version: "0.2-draft"
+    manifest: [get_instrument_context, search_manuals, propose_parts_order]   # she just added the ordering skill
+    certified_tier: 2               # certified when the manifest was [get_instrument_context, search_manuals]
+  scheduling-agent:
+    owner: field-ops
+    version: "1.0"
+    manifest: []
+    certified_tier: 3
