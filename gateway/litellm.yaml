@@ -1,0 +1,15 @@
+# The model gateway seam. Agents only ever ask for the alias "triage-llm".
+# LIVE SWAP: change the one `model:` line under triage-llm, then `docker compose restart gateway`.
+model_list:
+  - model_name: triage-llm
+    litellm_params:
+      model: openai/gpt-6-luna              # ← swap to: anthropic/claude-sonnet-5-5
+
+  # Candidates the gates can promote (see docs/STACK.md)
+  - model_name: gpt-6-sol
+    litellm_params: {model: openai/gpt-6-sol}
+  - model_name: claude-sonnet-5-5
+    litellm_params: {model: anthropic/claude-sonnet-5-5}
+
+litellm_settings:
+  drop_params: true                         # ignore params a provider doesn't support

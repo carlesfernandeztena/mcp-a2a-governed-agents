@@ -1,0 +1,19 @@
+[project]
+name = "mcp-a2a-governed-agents"
+version = "0.1.0"
+description = "Reference implementation of a governed agent plane"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "httpx",
+    "pyjwt[crypto]",
+    "pyyaml",
+    "mcp",
+    "a2a-sdk[http-server]",
+    "pydantic-ai-slim[openai,mcp]",
+    "rich",
+]
+
+[tool.uv]
+package = false

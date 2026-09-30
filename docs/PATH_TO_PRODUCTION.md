@@ -44,7 +44,7 @@ Four groups:
 ## 4. Not built at all
 
 - **Running it for real:** containers, separate sandbox / staging / certified environments, secrets management.
-- **Model gateway limits:** budgets and rate limits per team, pinned model versions, fallback between providers, keeping data in the EU.
+- **Model gateway limits:** authentication with per-team virtual keys (the demo gateway is open on localhost), budgets and rate limits per team, pinned model versions, fallback between providers, keeping data in the EU.
 - **Operations:** service levels, alerts, on-call, cost dashboards, watching eval scores drift over time.
 - **Security:** network isolation between agents and data, monitoring for prompt injection, penetration testing.
 - **Compliance:** GDPR records, data retention, and the separate track for regulated instruments (T4) with validated systems and quality sign-off.

@@ -1,0 +1,8 @@
+# One command: docker compose up
+services:
+  gateway:                       # model gateway: the only place that knows about providers
+    image: ghcr.io/berriai/litellm:main-stable
+    command: ["--config", "/app/litellm.yaml", "--port", "4000"]
+    volumes: ["./gateway/litellm.yaml:/app/litellm.yaml:ro"]
+    env_file: [{path: .env, required: false}]   # keys from .env; gateway is unauthenticated (local demo only)
+    ports: ["4000:4000"]

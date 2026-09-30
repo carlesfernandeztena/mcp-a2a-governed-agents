@@ -1,0 +1,6 @@
+.venv
+.git
+.env
+.keys
+audit
+__pycache__
