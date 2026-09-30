@@ -46,5 +46,5 @@ Four groups:
 - **Running it for real:** containers, separate sandbox / staging / certified environments, secrets management.
 - **Model gateway limits:** authentication with per-team virtual keys (the demo gateway is open on localhost), budgets and rate limits per team, pinned model versions, fallback between providers, keeping data in the EU.
 - **Operations:** service levels, alerts, on-call, cost dashboards, watching eval scores drift over time.
-- **Security:** network isolation between agents and data, monitoring for prompt injection, penetration testing.
+- **Security:** network isolation between agents and data, monitoring for prompt injection, penetration testing. The demo answers "unknown serial" (404) before checking access, so a caller can tell a missing freezer from one in another territory; production should answer both the same way to outsiders.
 - **Compliance:** GDPR records, data retention, and the separate track for regulated instruments (T4) with validated systems and quality sign-off.

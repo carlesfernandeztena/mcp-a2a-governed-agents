@@ -1,4 +1,10 @@
 # One command: docker compose up
+x-app: &app                      # our services share one image; each runs a different command
+  build: .
+  volumes:
+    - ./.keys:/app/.keys         # stub issuer's key pair (never baked into the image)
+    - ./audit:/app/audit         # one shared audit log
+
 services:
   gateway:                       # model gateway: the only place that knows about providers
     image: ghcr.io/berriai/litellm:main-stable
@@ -6,3 +12,8 @@ services:
     volumes: ["./gateway/litellm.yaml:/app/litellm.yaml:ro"]
     env_file: [{path: .env, required: false}]   # keys from .env; gateway is unauthenticated (local demo only)
     ports: ["4000:4000"]
+
+  dataproducts:                  # governed data: badge checked at the door
+    <<: *app
+    command: ["uvicorn", "dataproducts.app:app", "--host", "0.0.0.0", "--port", "8001"]
+    ports: ["8001:8001"]
