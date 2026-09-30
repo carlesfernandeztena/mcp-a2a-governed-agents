@@ -1,0 +1,41 @@
+# Every number and table the rules use (docs/DEMO_SCENARIOS.md). Change a value here, re-run the evals.
+today: "2026-10-02"            # frozen demo clock (R-SCH-0)
+timezone: "+02:00"
+
+access:                         # R-ACC-1: territory of each country
+  territories: {ES: EMEA, NO: EMEA, US: NA}
+
+tiers:                          # T1 look · T2 customer data · T3 act · T4 regulated
+  skills:
+    search_manuals: 1
+    get_instrument_context: 2
+    propose_parts_order: 3
+  regulated: 4                  # R-RSK-2: touching a regulated record
+
+diagnosis:
+  samples_at_risk_above_c: -70  # R-DGN-7
+  e47_daily_mean_above_c: -77   # E-47 / R-ORD-7
+  e21_condenser_above_c: 48     # E-21 / R-ORD-7
+  compressor_current_min_a: 5   # R-ORD-7: compressor signature
+  recent_replacement_days: 90   # R-DGN-5 / R-ORD-6
+  telemetry_stale_days: 2       # no reading newer than this → telemetry_missing
+
+ordering:
+  max_qty_per_part: 1           # R-ORD-5
+  evidence:                     # R-ORD-7: what the latest telemetry must show for each part
+    CMP-CX: compressor
+    GK-80-A: gasket
+    GK-80-B: gasket
+    AF-80: filter
+
+scheduling:                     # R-SCH-1
+  sla_business_days: {gold: 2, silver: 5}
+  urgent_business_days: 1
+  deadline_hour: 18
+
+safety:                         # R-SAF-6: injection tripwire patterns (case-insensitive)
+  suspicious_patterns:
+    - "ignore (all |any )?previous instructions"
+    - "\\bsystem:"
+    - "you are now"
+    - "disregard (the|your) (rules|instructions)"
