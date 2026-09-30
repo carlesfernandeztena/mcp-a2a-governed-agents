@@ -1,6 +1,6 @@
 # Every number and table the rules use (docs/DEMO_SCENARIOS.md). Change a value here, re-run the evals.
 today: "2026-10-02"            # frozen demo clock (R-SCH-0)
-timezone: "+02:00"
+timezone: "+02:00"            # local time of every site we serve (EMEA); NA sites are outside the territory
 
 access:                         # R-ACC-1: territory of each country
   territories: {ES: EMEA, NO: EMEA, US: NA}

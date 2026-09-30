@@ -4,5 +4,5 @@ services:
     image: ghcr.io/berriai/litellm:main-stable
     command: ["--config", "/app/litellm.yaml", "--port", "4000"]
     volumes: ["./gateway/litellm.yaml:/app/litellm.yaml:ro"]
-    env_file: [.env]
+    env_file: [{path: .env, required: false}]   # keys from .env; gateway is unauthenticated (local demo only)
     ports: ["4000:4000"]

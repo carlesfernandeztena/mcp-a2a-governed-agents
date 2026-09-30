@@ -1,13 +1,17 @@
 """Output contracts (docs/OUTPUT_CONTRACT.md) as Pydantic models.
 
 Convention: `null` means unknown; a field that does not apply is left out.
-So results are built by setting only the fields that apply, and dumped with `exclude_unset`.
+Optional fields default to None but are NOT typed `| None`: Pydantic doesn't validate defaults, so a field
+can be absent, yet setting it to None explicitly is rejected. Only `samples_at_risk` may be null (unknown).
+Results are dumped with `exclude_unset`.
 """
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
 Cause = Literal["door_gasket_worn", "compressor_failing", "condenser_filter_clogged", "door_ajar", "unknown"]
+Flag = Literal["chargeable_needs_po", "sla_breach", "scheduling_unavailable", "telemetry_missing",
+               "instrument_not_found", "suspicious_text_in_data"]
 
 
 class _Model(BaseModel):
@@ -44,11 +48,11 @@ class Part(_Model):
 
 
 class Visit(_Model):
-    engineer: str | None = None       # absent when there is no free slot at all
-    start: str | None = None
-    end: str | None = None
-    sla_deadline: str | None = None   # absent when there is no contract
-    within_sla: bool | None = None
+    engineer: str = None       # absent when there is no free slot at all
+    start: str = None
+    end: str = None
+    sla_deadline: str = None   # absent when there is no contract
+    within_sla: bool = None
 
 
 class Approval(_Model):
@@ -65,16 +69,16 @@ class Denial(_Model):
 class TriageResult(_Model):
     """What triage-agent returns: the LLM's draft plus every field filled by code."""
     status: Literal["proposal", "no_action", "escalate", "denied"]
-    diagnosis: Diagnosis | None = None
-    evidence: list[Evidence] | None = None
-    parts: list[Part] | None = None
-    urgency: Literal["routine", "urgent"] | None = None
-    samples_at_risk: bool | None = None   # null = unknown
-    advice: list[str] | None = None
-    visit: Visit | None = None
-    flags: list[str] | None = None
-    approval: Approval | None = None
-    denial: Denial | None = None
+    diagnosis: Diagnosis = None
+    evidence: list[Evidence] = None
+    parts: list[Part] = None
+    urgency: Literal["routine", "urgent"] = None
+    samples_at_risk: bool | None = None   # the one nullable field: null = unknown
+    advice: list[str] = None
+    visit: Visit = None
+    flags: list[Flag] = None
+    approval: Approval = None
+    denial: Denial = None
 
 
 class ScheduleRequest(_Model):

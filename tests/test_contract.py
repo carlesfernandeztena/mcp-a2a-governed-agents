@@ -29,4 +29,10 @@ def test_null_means_unknown_absent_means_not_applicable():
     unknown = TriageResult(status="escalate", samples_at_risk=None).dump()
     assert "samples_at_risk" in unknown and unknown["samples_at_risk"] is None
     assert "visit" not in unknown and "denial" not in unknown
+    for field in ("visit", "denial", "parts", "flags"):
+        try:
+            TriageResult(status="escalate", **{field: None})
+            raise AssertionError(f"{field}=None accepted; not-applicable fields must be left out")
+        except ValidationError:
+            pass
 

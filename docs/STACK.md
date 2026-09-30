@@ -6,7 +6,7 @@ Chosen after the data was finished (D14), so the data never depended on it.
 |---|---|---|
 | Language / env | Python 3.12, **uv** | Official MCP and A2A SDKs and the gateway are Python-first |
 | Run everything | **docker compose** (one shared image for our services + the official LiteLLM image) | Standard, reproducible anywhere; `docker compose stop scheduling-agent` breaks a seam live |
-| Model gateway | **LiteLLM Proxy** | Neutral OpenAI-style API; the agent asks for the alias `triage-llm`, one line in `gateway.yaml` picks the provider (the live swap) |
+| Model gateway | **LiteLLM Proxy** | Neutral OpenAI-style API; the agent asks for the alias `triage-llm`, one line in `gateway/litellm.yaml` picks the provider (the live swap) |
 | Providers | **OpenAI** (default): `gpt-6-luna` for development, `gpt-6-sol` if Luna fails the gates. **Anthropic** `claude-sonnet-5-5` for the live swap and minimal tests | Tight budget; the eval gates decide which model is good enough |
 | Agent loop | **Pydantic AI** | Model-agnostic, native MCP client, output validated against the contract as a Pydantic model |
 | Skills | **MCP Python SDK**, streamable HTTP, one process each | Real seam; badge in the `Authorization` header |
