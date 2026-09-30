@@ -1,0 +1,5 @@
+id,part_number,name,category,fits_model,fits_revisions,price_eur
+PRT-GK-80-A,GK-80-A,GasketKit 80-A,door gasket,Cryonix 80,A,180
+PRT-GK-80-B,GK-80-B,GasketKit 80-B,door gasket,Cryonix 80,B,195
+PRT-CMP-CX,CMP-CX,Compressor CX,compressor,Cryonix 80,A;B,2400
+PRT-AF-80,AF-80,AirFilter 80,condenser air filter,Cryonix 80,A;B,25

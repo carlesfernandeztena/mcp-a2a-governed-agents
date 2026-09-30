@@ -1,0 +1,8 @@
+[
+  {"id": "yusuf", "name": "Yusuf", "role": "field_engineer", "territory": "EMEA", "country": "ES", "base": "Barcelona"},
+  {"id": "grant", "name": "Grant", "role": "service_manager", "territory": "EMEA", "country": "ES", "base": "Barcelona"},
+  {"id": "consuelo", "name": "Consuelo", "role": "service_desk_coordinator", "territory": "EMEA", "country": "ES", "base": "Barcelona"},
+  {"id": "mariona", "name": "Mariona", "role": "field_engineer", "territory": "EMEA", "country": "ES", "base": "Barcelona"},
+  {"id": "sven", "name": "Sven", "role": "field_engineer", "territory": "EMEA", "country": "NO", "base": "Oslo"},
+  {"id": "nate", "name": "Nate", "role": "field_engineer", "territory": "NA", "country": "US", "base": "Boston"}
+]

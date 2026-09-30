@@ -1,0 +1,12 @@
+id,serial,model,revision,site,city,country,territory,regulated,stores,contract_tier,contract_end,installed_on
+INS-5123,5123,Cryonix 80,B,BarnaLabs,Barcelona,ES,EMEA,false,cell-line master bank,gold,2027-12-31,2022-09-20
+INS-3210,3210,Cryonix 80,A,BarnaLabs,Barcelona,ES,EMEA,false,antibody library,gold,2027-12-31,2021-03-15
+INS-5188,5188,Cryonix 80,B,BarnaLabs,Barcelona,ES,EMEA,false,reagent stock,silver,2027-06-30,2023-05-10
+INS-5230,5230,Cryonix 80,B,BarnaLabs,Barcelona,ES,EMEA,false,teaching samples,silver,2027-06-30,2023-11-02
+INS-5301,5301,Cryonix 80,B,BarnaLabs,Barcelona,ES,EMEA,false,biobank DNA archive,gold,2027-12-31,2022-01-18
+INS-5402,5402,Cryonix 80,B,BarnaLabs,Barcelona,ES,EMEA,false,primary cell cultures,gold,2027-12-31,2024-02-27
+INS-3355,3355,Cryonix 80,A,BarnaLabs,Barcelona,ES,EMEA,false,legacy archive,none,2026-06-30,2020-10-05
+INS-5477,5477,Cryonix 80,B,BarnaLabs,Barcelona,ES,EMEA,false,buffer and enzyme stock,silver,2027-06-30,2022-07-11
+INS-5710,5710,Cryonix 80,B,Fjord Biobank,Oslo,NO,EMEA,false,population biobank samples,gold,2027-12-31,2022-04-04
+INS-5600,5600,Cryonix 80 MD,B,Regula Clinic,Barcelona,ES,EMEA,true,patient blood and plasma,gold,2027-12-31,2023-01-09
+INS-7001,7001,Cryonix 80,B,Faraway Pharma,Boston,US,NA,false,vaccine candidates,gold,2027-12-31,2022-11-21
