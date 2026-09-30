@@ -1,7 +1,11 @@
 """Run every test module: uv run python -m tests.run"""
 import importlib
+import os
 import pkgutil
+import tempfile
 from pathlib import Path
+
+os.environ.setdefault("AUDIT_LOG", str(Path(tempfile.mkdtemp()) / "audit.jsonl"))  # tests never touch the real audit log
 
 failed = 0
 for mod in sorted(m.name for m in pkgutil.iter_modules([str(Path(__file__).parent)]) if m.name.startswith("test_")):
