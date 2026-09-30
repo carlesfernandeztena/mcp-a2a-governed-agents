@@ -21,7 +21,7 @@ def computed_tier(manifest: list[str]) -> int:
     return max((skill_tier(s) for s in manifest), default=0)
 
 
-def _actor(badge: dict) -> dict:
+def check_agent(badge: dict) -> dict:
     """R-ACC-4 two keys: only a delegated badge (a user AND an agent) gets anything."""
     act = badge.get("act")
     if not act:
@@ -34,7 +34,7 @@ def _actor(badge: dict) -> dict:
 
 def check_skill_call(badge: dict, skill: str) -> None:
     """R-RSK-3: the skill must be in the agent's manifest and within its certified tier (from the registry)."""
-    agent = _actor(badge)
+    agent = check_agent(badge)
     if skill not in agent["manifest"]:
         raise PermissionError(f"{badge['act']['sub']} does not declare {skill} in its manifest")
     if skill_tier(skill) > agent["certified_tier"]:
@@ -43,7 +43,7 @@ def check_skill_call(badge: dict, skill: str) -> None:
 
 def check_instrument_access(badge: dict, instrument: dict, enforced_at: str) -> None:
     """R-ACC-1 territory (who is asking) and R-RSK-2 regulated data (what is being asked)."""
-    agent = _actor(badge)
+    agent = check_agent(badge)
     territory = rules()["access"]["territories"]
     user_territory = territory.get(badge.get("country"))
     if user_territory is None or user_territory != territory.get(instrument["country"]):

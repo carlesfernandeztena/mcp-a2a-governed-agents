@@ -12,7 +12,7 @@ import re
 from fastapi import Depends, FastAPI, Header, HTTPException
 
 from harness import audit, badges
-from harness.policy import Denied, check_instrument_access
+from harness.policy import Denied, check_agent, check_instrument_access
 from harness.rules import ROOT, rules
 
 DATA = ROOT / "data"
@@ -20,7 +20,7 @@ app = FastAPI(title="Data products")
 
 
 def _csv(name: str) -> list[dict]:
-    with open(DATA / name) as f:
+    with open(DATA / name, encoding="utf-8", newline="") as f:
         return list(csv.DictReader(f))
 
 
@@ -30,7 +30,7 @@ TELEMETRY = _csv("telemetry.csv")
 PARTS = {r["part_number"]: r for r in _csv("parts_catalog.csv")}
 MANUAL = [
     {"id": m.group(1), "title": m.group(2).strip(), "text": m.group(3).strip()}
-    for m in re.finditer(r"^## (MAN-[\w-]+) — (.*?)\n(.*?)(?=^## |\Z)", (DATA / "manual_cryonix80.md").read_text(), re.M | re.S)
+    for m in re.finditer(r"^## (MAN-[\w-]+) — (.*?)\n(.*?)(?=^## |\Z)", (DATA / "manual_cryonix80.md").read_text(encoding="utf-8"), re.M | re.S)
 ]
 SUSPICIOUS = [re.compile(p, re.I) for p in rules()["safety"]["suspicious_patterns"]]
 
@@ -44,8 +44,7 @@ def caller(authorization: str | None = Header(None), x_trace_id: str | None = He
     trace = x_trace_id or audit.new_trace()
     try:
         badge = badges.from_header(authorization)
-        if not badge.get("act"):
-            raise PermissionError("no agent in the badge")
+        check_agent(badge)  # R-ACC-4 on every route: a user AND a registered agent
     except PermissionError as e:
         audit.write(trace, "dataproducts", "refused", detail=str(e))
         raise HTTPException(401, str(e)) from None
@@ -55,7 +54,7 @@ def caller(authorization: str | None = Header(None), x_trace_id: str | None = He
 def _served(c: Caller, product: str, records: list[dict], **extra) -> list[dict]:
     body = json.dumps(records, sort_keys=True).encode()
     audit.write(c.trace, f"dataproducts/{product}", "read", c.badge, records=[r["id"] for r in records],
-                sha256=hashlib.sha256(body).hexdigest()[:16], **extra)
+                sha256=hashlib.sha256(body).hexdigest(), **extra)
     return records
 
 
@@ -69,14 +68,15 @@ def _instrument(c: Caller, serial: str, product: str) -> dict:
     except Denied as d:
         audit.write(c.trace, d.enforced_at, "denied", c.badge, serial=serial, reason=d.reason, detail=d.detail)
         raise HTTPException(403, {"denial": {"reason": d.reason, "enforced_at": d.enforced_at}}) from None
-    except PermissionError as e:
-        raise HTTPException(401, str(e)) from None
     return inst
 
 
 def _typed(row: dict) -> dict:
+    """CSV strings → JSON types. Empty cells mean "does not apply", so they are left out (contract convention)."""
     out = {}
     for k, v in row.items():
+        if v == "":
+            continue
         if k == "serial":
             out[k] = v
         elif v in ("true", "false"):
@@ -99,7 +99,9 @@ def instrument(serial: str, c: Caller = Depends(caller)) -> dict:
 def service_records(serial: str, c: Caller = Depends(caller)) -> list[dict]:
     """R-SAF-6: free text that looks like an instruction is returned marked, never obeyed."""
     inst = _instrument(c, serial, "service-records")
-    records = [r | {"suspicious": any(p.search(r["note"]) for p in SUSPICIOUS)} for r in SERVICE if r["instrument"] == inst["id"]]
+    records = [_typed(r) | {"suspicious": any(p.search(r["note"]) for p in SUSPICIOUS)}
+               | ({"parts_replaced": r["parts_replaced"].split(";")} if r["parts_replaced"] else {})
+               for r in SERVICE if r["instrument"] == inst["id"]]
     flagged = [r["id"] for r in records if r["suspicious"]]
     return _served(c, "service-records", records, **({"suspicious": flagged} if flagged else {}))
 
