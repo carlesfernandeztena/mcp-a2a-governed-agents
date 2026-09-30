@@ -15,9 +15,11 @@ def new_trace() -> str:
 
 
 def write(trace: str, component: str, action: str, badge: dict | None = None, **detail) -> dict:
-    """ponytail: append-only local file; production = tamper-evident store with retention (PATH_TO_PRODUCTION)."""
+    """ponytail: append-only local file; production = tamper-evident store with retention (PATH_TO_PRODUCTION).
+    Identity fields come from the verified badge and are written last, so `detail` can never overwrite them."""
     act = (badge or {}).get("act") or {}
     event = {
+        **detail,
         "ts": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime()) + "Z",
         "trace": trace,
         "component": component,
@@ -25,9 +27,8 @@ def write(trace: str, component: str, action: str, badge: dict | None = None, **
         "user": (badge or {}).get("sub"),
         "agent": act.get("sub"),
         "agent_version": act.get("version"),
-        **detail,
     }
-    LOG.parent.mkdir(exist_ok=True)
+    LOG.parent.mkdir(parents=True, exist_ok=True)
     with LOG.open("a") as f:
         f.write(json.dumps(event, ensure_ascii=False) + "\n")
     return event
@@ -36,5 +37,10 @@ def write(trace: str, component: str, action: str, badge: dict | None = None, **
 def read(trace: str | None = None) -> list[dict]:
     if not LOG.exists():
         return []
-    events = [json.loads(line) for line in LOG.read_text().splitlines()]
+    events = []
+    for line in LOG.read_text().splitlines():
+        try:
+            events.append(json.loads(line))
+        except json.JSONDecodeError:  # a line still being written by another container
+            continue
     return [e for e in events if trace is None or e["trace"] == trace]
