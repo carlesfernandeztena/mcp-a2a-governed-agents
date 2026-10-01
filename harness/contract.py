@@ -8,7 +8,7 @@ Results are dumped with `exclude_unset`.
 import re
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 def serial_of(value) -> str:
@@ -34,7 +34,8 @@ class Diagnosis(_Model):
 
 
 class Evidence(_Model):
-    ref: str      # a record id: INS-, SRV-, TEL-, MAN-, PRT-
+    # exactly one record id per item; a malformed ref is a validation error, so the model is asked to fix it
+    ref: str = Field(pattern=r"^(INS|SRV|TEL|MAN|PRT)-[A-Za-z0-9-]+$", description="one record id, e.g. TEL-5123-2026-10-01")
     claim: str
 
 

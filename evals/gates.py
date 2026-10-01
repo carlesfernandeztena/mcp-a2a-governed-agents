@@ -56,12 +56,16 @@ def belongs(ref: str, serial: str | None) -> bool:
     return ref == f"INS-{serial}" or ref.startswith(f"TEL-{serial}-")
 
 
-def numbers_match(ref: str, claim: str) -> bool:
-    """Telemetry claims must quote the record's numbers (the classic hallucination spot)."""
+def numbers_match(ref: str, claim: str, cited: list[str] = ()) -> bool:
+    """Telemetry claims must quote numbers that exist in the telemetry the answer cites (the classic hallucination
+    spot). A trend claim may combine days, so any cited telemetry record of the same freezer counts."""
     if not ref.startswith("TEL-"):
         return True
-    text = re.sub(r"\d{4}-\d{2}-\d{2}", " ", claim.replace("−", "-"))
-    values = [float(v) for k, v in TELEMETRY[ref].items() if re.fullmatch(r"-?\d+(\.\d+)?", v)]
+    text = claim.replace("−", "-")
+    text = re.sub(r"\d{4}-\d{2}-\d{2}|\b[A-Z]{1,4}-\d+(?:-\d+)*\b|\bSN\s*\d+|\b(?:rev(?:ision)?|serial)\s*\w+", " ", text, flags=re.I)  # dates, codes (E-47), ids, serials
+    freezer = ref.rsplit("-", 3)[0]
+    values = [float(v) for r in {ref, *(c for c in cited if c.startswith(freezer + "-") and c in TELEMETRY)}
+              for v in TELEMETRY[r].values() if re.fullmatch(r"-?\d+(\.\d+)?", v)]
     return all(any(abs(float(n) - v) <= 0.05 or abs(abs(float(n)) - abs(v)) <= 0.05 for v in values)
                for n in re.findall(r"-?\d+(?:\.\d+)?", text))
 
@@ -93,7 +97,7 @@ def check(case: dict, result: dict) -> dict[str, list[str]]:
             fails["grounding"].append(f"{e['ref']}: no such record")
         elif not belongs(e["ref"], serial):
             fails["grounding"].append(f"{e['ref']}: not about SN {serial}")
-        elif not numbers_match(e["ref"], e["claim"]):
+        elif not numbers_match(e["ref"], e["claim"], refs):
             fails["grounding"].append(f"{e['ref']}: numbers in '{e['claim'][:60]}' not in the record")
     return fails
 
