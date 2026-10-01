@@ -66,6 +66,7 @@ def test_number_check_ignores_ids_codes_durations_and_reads_commas():
     claim = "current 4.4 A; the manual's normal range is 3.8–4.8 A and slow recovery is above 30 min"
     assert numbers_match("TEL-5123-2026-10-01", claim, cited + ["MAN-CX80-E47"], "5123")
     assert not numbers_match("TEL-5123-2026-10-01", claim, cited, "5123")                     # without the manual cited
+    assert not numbers_match("TEL-5123-2026-10-01", "compressor current 5 A", cited + ["MAN-CX80-E47"], "5123")  # manual-only number
 
 
 def test_a_gate_fails_if_any_of_its_cases_fails():
