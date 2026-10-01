@@ -52,7 +52,9 @@ def line(e: dict) -> str:
         v = e.get("visit", {})
         return f"{c} (A2A) → visit {escape(str(v.get('engineer', '—')))} {escape(str(v.get('start', '')))}  within SLA: {v.get('within_sla', 'n/a')}"
     if a == "answered":
-        return f"{c} → [bold]{escape(e['result']['status'])}[/] · model {escape(model_of(e))} · tokens {escape(str(e.get('tokens')))}"
+        down = (e.get("scheduling") or {}).get("error")   # the A2A hop failed: say so where the hop would have been
+        return (f"{c} → [bold]{escape(e['result']['status'])}[/] · model {escape(model_of(e))} · tokens {escape(str(e.get('tokens')))}"
+                + (f"\n[red]scheduling-agent (A2A) unreachable: {escape(down)}[/]" if down else ""))
     if a == "failed":
         return f"{c} → FAILED: {s.get('error', '')} · model {escape(model_of(e))}"
     if a in ("approved", "rejected"):
@@ -102,11 +104,12 @@ def card(events: list[dict]) -> Panel:
     else:
         decision = result.get("status", "—") + (f" ({result['denial']['reason']} @ {result['denial']['enforced_at']})" if "denial" in result else "")
     approval = next((e for e in events if e["action"] in ("approved", "rejected")), None)
-    rows = [("Who", q.get("user", "n/a")), ("On behalf of", f"{q['agent']} v{q['agent_version']}" if q else "n/a"),
+    rows = [("User", q.get("user", "n/a")), ("Agent", f"{q['agent']} v{q['agent_version']}, acting for {q['user']}" if q else "n/a"),
             ("What it saw", "  ".join(f"{k}: {len(v)}" for k, v in sorted(seen.items())) or "—"),
             ("Which model", model_of(outcome) if outcome and outcome["action"] != "denied" else "— (stopped before the model)" if outcome else "—"),
             ("Decision", decision),
             ("Parts", ", ".join(p["part_number"] for p in result.get("parts", [])) or "—"),
+            ("Flags", ", ".join(result.get("flags", [])) or "—"),
             ("Approval", f"{approval['action']} by {approval['user']}" if approval else "pending" if result.get("approval") else "—")]
     table = Table.grid(padding=(0, 2))
     for k, v in rows:
