@@ -1,11 +1,10 @@
 """Approve (or reject) a parts proposal as a human (R-ACC-2, R-ORD-4). Only a service manager may approve.
-
-    uv run python -m cli.approve P-<trace>-GK-80-B --as grant
-    uv run python -m cli.approve P-<trace>-GK-80-B --as yusuf      # refused: engineers propose, managers approve
-"""
-import argparse
-
+`demo approve grant` (cli/__main__.py); defaults to the last proposal."""
 from harness import audit, badges
+
+
+def last_proposal() -> str | None:
+    return next((e["proposal"]["proposal_id"] for e in reversed(audit.read()) if e["action"] == "proposed"), None)
 
 
 def decide(proposal_id: str, user: str, approve: bool = True) -> dict:
@@ -33,12 +32,3 @@ def decide(proposal_id: str, user: str, approve: bool = True) -> dict:
         # with retries and reconciliation. The demo records what would have been sent and stops.
         audit.write(trace, "erp", "submission_stubbed", badge, proposal_id=proposal_id, order=proposed["proposal"])
     return {"proposal_id": proposal_id, "state": action, "by": user}
-
-
-if __name__ == "__main__":
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("proposal_id")
-    p.add_argument("--as", dest="user", default="grant")
-    p.add_argument("--reject", action="store_true")
-    a = p.parse_args()
-    print(decide(a.proposal_id, a.user, not a.reject))
