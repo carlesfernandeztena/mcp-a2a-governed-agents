@@ -27,9 +27,7 @@ def test_eval_visits():
 
 
 def test_breach_and_unreachable_scheduler_are_flagged():
-    r = TriageResult(status="proposal", flags=["chargeable_needs_po"])
-    add_visit(r, {"visit": {"engineer": "sven", "within_sla": False}})
-    assert r.dump()["flags"] == ["chargeable_needs_po", "sla_breach"]
-    r = TriageResult(status="proposal")
-    add_visit(r, {"error": "ConnectError"})
+    r = add_visit(TriageResult(status="proposal", flags=["chargeable_needs_po"]), {"visit": {"engineer": "sven", "within_sla": False}})
+    assert r.dump()["flags"] == ["chargeable_needs_po", "sla_breach"] and r.dump()["visit"]["engineer"] == "sven"
+    r = add_visit(TriageResult(status="proposal"), {"error": "ConnectError"})
     assert "visit" not in r.dump() and r.dump()["flags"] == ["scheduling_unavailable"]
