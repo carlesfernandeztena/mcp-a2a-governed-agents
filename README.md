@@ -40,23 +40,25 @@ Needs Docker Compose ≥ 2.24 and an OpenAI API key. Scenes that ask the agent a
 ```bash
 cp .env.example .env          # add OPENAI_API_KEY (and ANTHROPIC_API_KEY for the swap)
 docker compose up -d --build  # gateway, data products, 3 MCP skills, scheduling agent, sandbox skill build
-alias demo='docker compose run --rm cli python -m'   # in your shell
+source scripts/demo.sh        # the `demo` command, with tab completion (needs uv: https://docs.astral.sh/uv/)
+demo                          # lists every command; `demo <command> -h` lists who, which freezers and examples
 ```
 
-No Docker? `scripts/local.sh` runs every service as a local process (needs [uv](https://docs.astral.sh/uv/)), and the same commands work as `uv run python -m …`.
+Without uv: `alias demo='docker compose run --rm cli python -m cli'` gives the same commands, except the ones that drive Docker (`gateway use`, `stop`, `start`, `eval --background`). No Docker? `scripts/local.sh` runs every service as a local process.
 
 | Scene | Command |
 |---|---|
-| Live audit stream (keep it open in a second terminal) | `demo cli.view --follow`: one colored line per event as it happens; eval runs are folded into their promotion line |
-| SC1 happy path (diagnosis → evidence-checked part → A2A visit → approval pending) | `demo cli.ask "Cryonix 80 SN 5123 at BarnaLabs, error E-47, temperature creeping up."` |
-| SC2 a skill on its own, over MCP, no LLM | `demo cli.skill propose_parts_order '{"serial": "5123", "part_number": "GK-80-A"}'` |
-| SC3 provider swap | in `gateway/litellm.yaml` change the `model:` line under `triage-llm` to `anthropic/claude-sonnet-5-5`, `docker compose restart gateway`, re-run SC1 |
-| SC4 entitlement deny (territory) | `demo cli.ask "Faraway Pharma in Boston reports E-47 on SN 7001."` |
-| SC5 tier inheritance | `demo cli.view --registry` · `demo cli.ask --as consuelo --agent quick-lookup "Order a GasketKit 80-B for SN 5123"` |
-| SC6 audit card | `demo cli.view` (last question) · `demo cli.view <trace> --raw` |
-| SC7 eval gates → promotion | `demo evals.run` (certified build) · `docker compose run --rm -e SKILL_PARTS_URL=http://skill-parts-rc:8113/mcp cli python -m evals.run --candidate "1.1-rc (parts skill 0.4)"` · `demo cli.view --promotions` |
-| SC8 break a seam | `docker compose stop scheduling-agent`, re-run SC1 → proposal stands, flag `scheduling_unavailable` |
-| Approval | `demo cli.approve <proposal_id> --as yusuf` (refused) · `--as grant` (approved → ERP stub) |
+| Live audit stream (keep it open in a second terminal) | `demo follow`: one colored line per event as it happens; eval runs are folded into their promotion line |
+| SC1 happy path (diagnosis → evidence-checked part → A2A visit → approval pending) | `demo ask yusuf "Cryonix 80 SN 5123 at BarnaLabs, error E-47, temperature creeping up."` |
+| Approval | `demo approve yusuf` (refused: engineers propose) · `demo approve grant` (approved → ERP stub) |
+| SC2 a skill on its own, over MCP, no LLM | `demo skill order 5123 GK-80-A` (refused, R-ORD-1) |
+| SC3 provider swap | `demo gateway use sonnet` (edits the one line in `gateway/litellm.yaml`, shows the diff, restarts), re-run SC1 |
+| SC4 entitlement deny (territory) | `demo ask yusuf "Faraway Pharma in Boston reports E-47 on SN 7001."` |
+| SC5 tier inheritance | `demo registry` · `demo ask consuelo "Order a GasketKit 80-B for SN 5123 at BarnaLabs."` |
+| SC6 audit card | `demo view` (last question) · `demo view <trace> --raw` |
+| SC7 eval gates → promotion | `demo eval rc` (candidate with the parts-skill bug → BLOCKED) · `demo eval current` (pass^3) · `demo promotions` |
+| SC8 break a seam | `demo stop scheduling-agent`, re-run SC1 → proposal stands, flag `scheduling_unavailable` · `demo start scheduling-agent` |
+| SC9 the two stubs | `demo stubs` |
 
 ## Honest limits
 

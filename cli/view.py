@@ -1,13 +1,5 @@
 """Clean views over the audit log (the log stays the full record; these only choose what to show).
-
-    uv run python -m cli.view                # last question: trace tree + audit card
-    uv run python -m cli.view <trace>        # a specific trace
-    uv run python -m cli.view --promotions   # promotion decisions from the eval gates
-    uv run python -m cli.view --registry     # manifests, computed vs certified tier (who may run)
-    uv run python -m cli.view <trace> --raw  # every audit line, unfiltered
-    uv run python -m cli.view --follow       # live: one colored line per event as it happens (eval traffic folded)
-"""
-import argparse
+Used by `demo view`, `demo follow`, `demo registry` and `demo promotions` (cli/__main__.py)."""
 import json
 import time
 from collections import defaultdict
@@ -191,31 +183,15 @@ def promotions() -> None:
     console.print(table)
 
 
-if __name__ == "__main__":
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("trace", nargs="?")
-    p.add_argument("--promotions", action="store_true")
-    p.add_argument("--registry", action="store_true")
-    p.add_argument("--raw", action="store_true")
-    p.add_argument("--follow", action="store_true")
-    a = p.parse_args()
-    if a.follow:
-        try:
-            follow()
-        except KeyboardInterrupt:
-            pass
-    elif a.promotions:
-        promotions()
-    elif a.registry:
-        registry()
+def show_trace(trace: str | None = None, raw: bool = False) -> None:
+    """SC6: the trace tree and audit card of one question (default: the last one asked)."""
+    trace = trace or next((e["trace"] for e in reversed(audit.read()) if e["action"] == "question"), None)
+    events = audit.read(trace) if trace else []
+    if not events:
+        raise SystemExit("audit log is empty" if not trace else f"no such trace: {trace}")
+    if raw:
+        for e in events:
+            console.print_json(json.dumps(e, ensure_ascii=False))
     else:
-        trace = a.trace or next((e["trace"] for e in reversed(audit.read()) if e["action"] == "question"), None)
-        events = audit.read(trace) if trace else []
-        if not events:
-            raise SystemExit("audit log is empty" if not trace else f"no such trace: {trace}")
-        if a.raw:
-            for e in events:
-                console.print_json(json.dumps(e, ensure_ascii=False))
-        else:
-            console.print(tree(events))
-            console.print(card(events))
+        console.print(tree(events))
+        console.print(card(events))

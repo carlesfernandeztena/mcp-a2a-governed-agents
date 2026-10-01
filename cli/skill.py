@@ -1,16 +1,9 @@
-"""Call one MCP skill directly, no LLM (demo scene SC2).
-
-    uv run python -m cli.skill search_manuals '{"query": "E-47"}'
-    uv run python -m cli.skill propose_parts_order '{"serial": "5123", "part_number": "GK-80-A"}' --as yusuf
-"""
-import argparse
-import asyncio
+"""Call one MCP skill directly, no LLM (demo scene SC2): `demo skill …` (cli/__main__.py)."""
 import json
 import os
 
 from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
-from rich import print_json
 
 from harness import audit, badges
 
@@ -27,13 +20,3 @@ async def call(skill: str, args: dict, user: str, agent: str) -> dict:
     async with Client(StreamableHttpTransport(SKILLS[skill], headers=headers)) as client:
         result = await client.call_tool(skill, args)
     return result.structured_content or json.loads(result.content[0].text)
-
-
-if __name__ == "__main__":
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("skill", choices=SKILLS)
-    p.add_argument("args", nargs="?", default="{}", help="tool arguments as JSON")
-    p.add_argument("--as", dest="user", default="yusuf")
-    p.add_argument("--agent", default="triage-agent")
-    a = p.parse_args()
-    print_json(data=asyncio.run(call(a.skill, json.loads(a.args), a.user, a.agent)))

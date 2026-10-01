@@ -32,7 +32,7 @@ services:
     environment: {DATA_URL: "http://dataproducts:8001"}
     ports: ["127.0.0.1:8102:8102"]
 
-  cli:                           # docker compose run --rm cli python -m cli.ask "…"
+  cli:                           # docker compose run --rm cli python -m cli ask yusuf "…"
     <<: *app
     profiles: [cli]
     depends_on: [gateway, skill-context, skill-manuals, skill-parts]
@@ -41,6 +41,7 @@ services:
       SKILL_CONTEXT_URL: "http://skill-context:8101/mcp"
       SKILL_MANUALS_URL: "http://skill-manuals:8102/mcp"
       SKILL_PARTS_URL: "http://skill-parts:8103/mcp"
+      SKILL_PARTS_RC_URL: "http://skill-parts-rc:8113/mcp"   # demo eval rc
       SCHEDULING_URL: "http://scheduling-agent:8201/"
 
   scheduling-agent:              # Field Ops' agent behind A2A (deterministic, no LLM)
