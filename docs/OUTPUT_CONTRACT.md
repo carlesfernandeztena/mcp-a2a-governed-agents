@@ -53,7 +53,7 @@ Stack-neutral shapes that the synthetic data and eval cases are written against.
 | `urgency` | `urgent` if `samples_at_risk` is `true`, otherwise `routine` | **harness**, derived from `samples_at_risk` |
 | `advice[]` | short text | LLM |
 | `visit` | slot; **absent** when no visit is proposed or scheduling is unreachable (then flag `scheduling_unavailable`) | **scheduling-agent** (A2A), never the LLM |
-| `flags[]` | `chargeable_needs_po` · `sla_breach` · `scheduling_unavailable` · `telemetry_missing` · `instrument_not_found` · `suspicious_text_in_data` · `reported_reading_conflicts` | skills / scheduling-agent / harness |
+| `flags[]` | `chargeable_needs_po` · `sla_breach` · `scheduling_unavailable` · `telemetry_missing` · `instrument_not_found` · `suspicious_text_in_data` · `reported_reading_conflicts` · `grounding_unverified` | skills / scheduling-agent / harness |
 | `approval` | required for any T3 action | **harness** (R-ORD-4) |
 | `denial` | only present when `status` is `denied`: `{ "reason": "territory" \| "tier" \| "regulated", "enforced_at": "<data product or harness>" }` — territory = who is asking; tier / regulated = what is being asked | **harness / data product** |
 

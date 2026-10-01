@@ -8,7 +8,7 @@ record-id prefixes the evidence must include. G2 uses the same grounding code th
 import csv
 import re
 
-from harness.grounding import numbers_ok, problems  # noqa: F401  (numbers_ok re-exported for tests)
+from harness.grounding import problems
 from harness.rules import ROOT
 
 D = ROOT / "data"

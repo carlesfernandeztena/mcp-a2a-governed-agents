@@ -78,3 +78,21 @@ def test_a_gate_fails_if_any_of_its_cases_fails():
     results = {"L2-01": GOOD, "L2-02": GOOD}
     gates = gate_results([CASES["L2-01"], CASES["L2-02"]], results)
     assert not gates["G2"]["failed"].get("L2-01") and "L2-02" in gates["G3"]["failed"]
+
+
+def test_certification_needs_every_run_green_and_enough_runs():
+    from evals.run import decide
+    cases = [CASES["L2-01"], CASES["L2-02"]]
+    green = {"gates": {g: {"cases": 2, "failed": {}} for g in ("G1", "G2", "G3")}}
+    red = {"gates": {"G1": {"cases": 2, "failed": {}}, "G2": {"cases": 2, "failed": {"L2-02": ["x"]}}, "G3": {"cases": 2, "failed": {}}}}
+    assert decide(cases, [green, green, green], 3)[0] == "certified"
+    decision, gates, unstable = decide(cases, [green, red], 3)                 # stopped early after a red run
+    assert decision == "blocked" and unstable == {"L2-02": "1/2"} and gates["G2"]["failed"]["L2-02"] == ["run 2: x"]
+    assert decide(cases, [green], 1)[0] == "blocked"                           # one green run is not enough
+    assert decide(cases, [green, green, green], 3, subset=True)[0] == "blocked"
+
+
+def test_date_like_pairs_followed_by_units_are_still_checked():
+    from evals.gates import RECORDS, problems
+    cited = [{"ref": "TEL-5123-2026-10-01", "claim": "cabinet 12/14 °C now"}]
+    assert problems(cited, RECORDS, "5123")                                  # not a date: a made-up reading

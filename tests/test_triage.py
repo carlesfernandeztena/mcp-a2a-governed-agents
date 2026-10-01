@@ -54,11 +54,11 @@ def test_runtime_grounding_checks_only_what_this_run_saw():
                                                           "latest_telemetry": tel, "samples_at_risk": False, "flags": []})
     good = draft()                                                       # cites TEL-5123-2026-10-01 "-74.0 °C"
     assert runtime_problems(good, [ctx], "5123") == []
-    unseen = good.model_copy(update={"evidence": [*good.evidence, {"ref": "SRV-0142", "claim": "gasket fitted"}]})
-    assert any("SRV-0142: no such record" in p for p in runtime_problems(TriageDraft.model_validate(unseen.model_dump()), [ctx], "5123"))
+    unseen = TriageDraft.model_validate(good.model_dump() | {"evidence": [*good.model_dump()["evidence"], {"ref": "SRV-0142", "claim": "gasket fitted"}]})
+    assert any("SRV-0142: no such record" in p for p in runtime_problems(unseen, [ctx], "5123"))
     risky = ("get_instrument_context", {}, {**ctx[2], "samples_at_risk": True})
     found = runtime_problems(good, [risky], "5123")
-    assert "must cite MAN-CX80-SAMPLES" in found and any("search the manual" in p for p in found)
+    assert "must cite MAN-CX80-SAMPLES" in found and any("search_manuals('MAN-CX80-SAMPLES')" in p for p in found)
 
 
 def test_chargeable_flag_travels_from_the_skill():

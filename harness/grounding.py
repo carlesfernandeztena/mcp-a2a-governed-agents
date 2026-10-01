@@ -6,7 +6,7 @@ draft against the records the agent actually saw, and the model is asked to fix 
 import re
 
 NOT_MEASUREMENTS = re.compile(  # numbers in a claim that are not readings: dates, times, ids, codes, models, durations
-    r"\d{4}-\d{2}-\d{2}|\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b|\b\d{1,2}\s+[A-Za-z]{3,9}\.?\s+\d{4}\b|\b\d{1,2}:\d{2}\b"
+    r"\d{4}-\d{2}-\d{2}|\b(?:[0-2]?\d|3[01])/(?:0?[1-9]|1[0-2])(?:/\d{2,4})?\b(?!\s*(?:°|%|(?-i:A)\b|min\b|times\b))|\b\d{1,2}\s+[A-Za-z]{3,9}\.?\s+\d{4}\b|\b\d{1,2}:\d{2}\b"
     r"|\b[A-Z]{1,4}-?\d+(?:-\d+)*\b|\bSN\s*\d+|\b(?:rev(?:ision)?|serial|freezer|Cryonix)\s*\d*\w*"
     r"|\b\d+\s*(?:days?|weeks?|months?|years?|points?|hours?|h)\b", re.I)
 NUMBER = re.compile(r"-?\d+(?:\.\d+)?")

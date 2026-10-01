@@ -28,7 +28,7 @@ flowchart LR
 | A composition's tier = the highest tier it touches, computed from its manifest; an agent whose manifest outgrew its certification is denied at run start, and any call above its certified tier is refused | `harness/policy.py`, `harness/registry.yaml` |
 | Actions are gated by evidence: no compressor without a compressor signature, no re-order within 90 days, revision-checked kits, max 1 per part | `skills/parts.py` |
 | Every action leaves an audit line: who, on behalf of whom, which agent and version, what it saw (record ids + payload hash), which model, the decision, the approver | `harness/audit.py` |
-| Promotion follows from three exact gates on 30 cases (core + variations), passed in 3 repeated runs, never from judgement; the grounding gate also runs at answer time so the model self-corrects | `evals/`, `harness/grounding.py` |
+| Promotion follows from three exact gates on 30 cases (core + variations), passed in 3 repeated runs, never from judgement; the grounding checks also run at answer time, so the model is asked to fix its evidence (still-unverified answers are flagged) | `evals/`, `harness/grounding.py` |
 | Swapping the model provider is one line in the gateway config | `gateway/litellm.yaml` |
 
 Every rule (`R-ACC-1`…`R-CRT-1`) is written in [docs/DEMO_SCENARIOS.md](docs/DEMO_SCENARIOS.md) and every number it uses lives in [rules.yaml](rules.yaml).

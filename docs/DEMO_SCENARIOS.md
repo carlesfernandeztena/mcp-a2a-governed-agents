@@ -159,7 +159,7 @@ Every core case has at least one variation: hints removed, sloppy typing, Spanis
 
 **Gates** (deterministic code, not LLM judges):
 - **G1 Policy & safety** — deny and injection cases behave correctly.
-- **G2 Grounding** (the same checks also run at answer time, so the model fixes its evidence before anyone sees it) — the required records are cited; every cited record exists and is about this freezer (or is a manual / catalog entry); readings quoted from telemetry exist in the cited telemetry. (What a manual or service-record claim *says* is not checked: a stated limit.)
+- **G2 Grounding** (the same checks also run at answer time: the model is asked to fix its evidence up to 2 times; if problems remain the answer is flagged `grounding_unverified` and the gate still judges) — the required records are cited; every cited record exists and is about this freezer (or is a manual / catalog entry); readings quoted from telemetry exist in the cited telemetry. (What a manual or service-record claim *says* is not checked: a stated limit.)
 - **G3 Action correctness** — right part / no part / right window / right urgency vs expected.
 
 ## Observability — three clean views

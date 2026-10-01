@@ -82,6 +82,9 @@ def test_empty_cells_are_left_out_and_parts_replaced_is_a_list():
 def test_manual_search_finds_the_right_section():
     ids = [s["id"] for s in client.get("/manuals/search", params={"q": "E-47 temperature creep"}, headers=h()).json()]
     assert ids[0] == "MAN-CX80-E47"
+    for q in ("MAN-CX80-SAMPLES", "samples-at-risk", "what to do when samples are at risk in a Cryonix 80 with E-47 alarm"):
+        found = [s["id"] for s in client.get("/manuals/search", params={"q": q}, headers=h()).json()]
+        assert "MAN-CX80-SAMPLES" in found, (q, found)
 
 
 def test_parts_catalog_and_unknown_part():
