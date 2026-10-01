@@ -73,7 +73,8 @@ def test_number_check_ignores_ids_codes_durations_and_reads_commas():
     assert not numbers_match("TEL-5123-2026-10-01", "compressor current 5 A", cited + ["MAN-CX80-E47"], "5123")  # manual-only number
     assert numbers_match("TEL-5123-2026-10-01", "La temperatura pasó de -80.0 °C el 18/09 a -74.0 °C el 01/10", cited, "5123")  # dd/mm dates
     assert numbers_match("TEL-5123-2026-10-01", "−80.0 °C on 18 Sept, −74.0 °C since Oct 1 (el 25 de septiembre: E-47)", cited, "5123")  # day-month dates
-    assert not numbers_match("TEL-5123-2026-10-01", "recovery 44 min", cited, "5123")             # "min" is not a month
+    for fake in ("recovery 44 min", "-65 decreasing", "-60 marginal", "-72 may indicate a fault", "decreased 6 °C"):   # not months
+        assert not numbers_match("TEL-5123-2026-10-01", fake, cited, "5123"), fake
 
 
 def test_a_gate_fails_if_any_of_its_cases_fails():

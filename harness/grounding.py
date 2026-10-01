@@ -5,9 +5,12 @@ draft against the records the agent actually saw, and the model is asked to fix 
 """
 import re
 
+# exact month names only, so "-65 decreasing" keeps its number; bare "may" is left out ("-74 may indicate")
+MONTH = (r"(?:jan(?:uary)?|ene(?:ro)?|feb(?:ruary|rero)?|mar(?:ch|zo)?|apr(?:il)?|abr(?:il)?|mayo|june?|junio|july?|julio|aug(?:ust)?"
+         r"|ago(?:sto)?|sep(?:t|tember|tiembre)?|oct(?:ober|ubre)?|nov(?:ember|iembre)?|dec(?:ember)?|dic(?:iembre)?)\b")
 NOT_MEASUREMENTS = re.compile(  # numbers in a claim that are not readings: dates, times, ids, codes, models, durations
     r"\d{4}-\d{2}-\d{2}|\b(?:[0-2]?\d|3[01])/(?:0?[1-9]|1[0-2])(?:/\d{2,4})?\b(?!\s*(?:°|%|(?-i:A)\b|min\b|times\b))|\b\d{1,2}\s+[A-Za-z]{3,9}\.?\s+\d{4}\b|\b\d{1,2}:\d{2}\b"
-    r"|\b\d{1,2}\s+(?:de\s+)?(?:jan|ene|feb|mar|apr|abr|may|jun|jul|aug|ago|sep|oct|nov|dec|dic)[a-z]*\b\.?|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b"
+    rf"|\b\d{{1,2}}\s+(?:de\s+)?{MONTH}\.?|\b{MONTH}\.?\s+\d{{1,2}}\b"
     r"|\b[A-Z]{1,4}-?\d+(?:-\d+)*\b|\bSN\s*\d+|\b(?:rev(?:ision)?|serial|freezer|Cryonix)\s*\d*\w*"
     r"|\b\d+\s*(?:days?|weeks?|months?|years?|points?|hours?|h)\b", re.I)
 NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
