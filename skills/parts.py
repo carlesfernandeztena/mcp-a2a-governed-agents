@@ -7,7 +7,7 @@ from datetime import date
 from mcp.server.mcpserver import Context, MCPServer
 
 from harness.rules import rules
-from skills._skill import Call, blocked, latest_fresh, run, seg, today
+from skills._skill import Call, blocked, latest_fresh, run, seg, serial_of, today
 
 VERSION = os.environ.get("PARTS_SKILL_VERSION", "1.0")
 mcp = MCPServer("parts", instructions="Propose a parts order; every proposal is checked against the records.")
@@ -86,7 +86,7 @@ def propose(call: Call, serial: str, part_number: str, qty: int = 1) -> dict:
 def propose_parts_order(serial: str, part_number: str, ctx: Context, qty: int = 1) -> dict:
     """Propose ordering a part for one freezer. Code checks catalog, revision, quantity, recent replacements and
     telemetry evidence; a refusal returns the reason and the rule id. Accepted proposals wait for manager approval."""
-    return run(propose, "propose_parts_order", ctx, serial=serial, part_number=part_number, qty=qty)
+    return run(propose, "propose_parts_order", ctx, serial=serial_of(serial), part_number=part_number, qty=qty)
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ from a2a.types.a2a_pb2 import AgentCapabilities, AgentCard, AgentInterface, Agen
 from starlette.applications import Starlette
 
 from harness import audit, badges
+from harness.contract import serial_of
 from harness.policy import Denied, check_skill_call
 from harness.rules import ROOT, rules
 
@@ -65,23 +66,30 @@ class Scheduler(AgentExecutor):
     async def execute(self, context: RequestContext, event_queue) -> None:
         headers = context.call_context.state.get("headers", {})
         trace = headers.get("x-trace-id") or audit.new_trace()
+        badge = None
         try:
             badge = badges.from_header(headers.get("authorization"))
             check_skill_call(badge, "propose_visit")
             [request] = get_data_parts(context.message.parts)
-            r = httpx.get(f"{DATA_URL}/instruments/{quote(str(request['serial']), safe='')}",
-                          headers={"Authorization": headers["authorization"], "X-Trace-Id": trace}, timeout=10)
+            serial, urgency = serial_of(request["serial"]), request.get("urgency")
+            if urgency not in ("routine", "urgent"):
+                raise ValueError(f"urgency must be routine or urgent, got {urgency!r}")  # never fail toward the weaker SLA
+            async with httpx.AsyncClient(timeout=10) as http:
+                r = await http.get(f"{DATA_URL}/instruments/{quote(serial, safe='')}",
+                                   headers={"Authorization": headers["authorization"], "X-Trace-Id": trace})
             if r.status_code == 403:
                 raise Denied(r.json()["detail"]["denial"]["reason"], "scheduling-agent")
+            if r.status_code == 404:
+                raise ValueError("instrument_not_found")
             r.raise_for_status()
-            answer = {"visit": propose_visit(r.json(), request.get("urgency", "routine"))}
-            audit.write(trace, "scheduling-agent", "proposed_visit", badge, serial=request["serial"], **answer)
+            answer = {"visit": propose_visit(r.json(), urgency)}
+            audit.write(trace, "scheduling-agent", "proposed_visit", badge, serial=serial, **answer)
         except Denied as d:
             answer = {"denied": {"reason": d.reason, "enforced_at": d.enforced_at}}
-            audit.write(trace, "scheduling-agent", "denied", None, reason=d.reason)
-        except (PermissionError, ValueError, KeyError, httpx.HTTPError) as e:
+            audit.write(trace, "scheduling-agent", "denied", badge, reason=d.reason)
+        except (PermissionError, ValueError, KeyError, TypeError, httpx.HTTPError) as e:
             answer = {"error": type(e).__name__, "detail": str(e)}
-            audit.write(trace, "scheduling-agent", "refused", None, detail=str(e))
+            audit.write(trace, "scheduling-agent", "refused", badge, detail=str(e))
         await event_queue.enqueue_event(new_data_message(answer, context_id=context.context_id, task_id=context.task_id))
 
     async def cancel(self, context: RequestContext, event_queue) -> None:
