@@ -81,10 +81,3 @@ class TriageResult(_Model):
     denial: Denial = None
 
 
-class ScheduleRequest(_Model):
-    """A2A handoff triage-agent → scheduling-agent. Who asks travels in the badge, not here."""
-    serial: str
-    site: str
-    country: str
-    contract_tier: Literal["gold", "silver", "none"]
-    urgency: Literal["routine", "urgent"]

@@ -38,6 +38,13 @@ services:
       SKILL_CONTEXT_URL: "http://skill-context:8101/mcp"
       SKILL_MANUALS_URL: "http://skill-manuals:8102/mcp"
       SKILL_PARTS_URL: "http://skill-parts:8103/mcp"
+      SCHEDULING_URL: "http://scheduling-agent:8201/"
+
+  scheduling-agent:              # Field Ops' agent behind A2A (deterministic, no LLM)
+    <<: *app
+    command: ["python", "-m", "agents.scheduling.agent"]
+    environment: {DATA_URL: "http://dataproducts:8001", SCHEDULING_PUBLIC_URL: "http://scheduling-agent:8201/"}
+    ports: ["8201:8201"]
 
   skill-parts:                   # MCP skill propose_parts_order (T3)
     <<: *app

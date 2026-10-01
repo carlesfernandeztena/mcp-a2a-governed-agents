@@ -10,6 +10,9 @@ import os
 from pathlib import Path
 
 import httpx
+from a2a.client import ClientConfig, ClientFactory
+from a2a.helpers.proto_helpers import get_data_parts, new_data_message
+from a2a.types.a2a_pb2 import Role, SendMessageRequest
 from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
 from pydantic_ai import Agent
@@ -19,7 +22,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.litellm import LiteLLMProvider
 
 from harness import audit, badges
-from harness.contract import Approval, Denial, Diagnosis, Part, TriageDraft, TriageResult
+from harness.contract import Approval, Denial, Diagnosis, Part, TriageDraft, TriageResult, Visit
 
 GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://localhost:4000")
 SKILL_URLS = {
@@ -27,6 +30,7 @@ SKILL_URLS = {
     "search_manuals": os.environ.get("SKILL_MANUALS_URL", "http://localhost:8102/mcp"),
     "propose_parts_order": os.environ.get("SKILL_PARTS_URL", "http://localhost:8103/mcp"),
 }
+SCHEDULING_URL = os.environ.get("SCHEDULING_URL", "http://localhost:8201/")
 PROMPT = (Path(__file__).parent / "prompt.md").read_text(encoding="utf-8")
 
 
@@ -40,6 +44,20 @@ class Stop(Exception):
 def gateway_model(alias: str = "triage-llm") -> Model:
     """Agents only ever know the gateway alias; which provider serves it is the gateway's business."""
     return OpenAIChatModel(alias, provider=LiteLLMProvider(api_base=GATEWAY_URL))
+
+
+async def schedule(headers: dict, serial: str, urgency: str) -> dict:
+    """A2A handoff to Field Ops' scheduling-agent, carrying the same badge. Returns its answer, or an error."""
+    try:
+        async with httpx.AsyncClient(headers=headers, timeout=10) as http:
+            client = await ClientFactory(ClientConfig(httpx_client=http, streaming=False)).create_from_url(SCHEDULING_URL)
+            request = SendMessageRequest(message=new_data_message({"serial": serial, "urgency": urgency}, role=Role.ROLE_USER))
+            async for event in client.send_message(request):
+                if event.HasField("message"):
+                    return get_data_parts(event.message.parts)[0]
+    except Exception as e:  # unreachable, refused, malformed: the proposal still stands, flagged
+        return {"error": type(e).__name__}
+    return {"error": "no answer"}
 
 
 def served_by(alias: str) -> str | None:
@@ -84,6 +102,23 @@ def assemble(draft: TriageDraft | None, calls: list[tuple[str, dict, dict]], sto
     return result
 
 
+def result_serial(calls: list[tuple[str, dict, dict]]) -> str:
+    """The freezer the accepted proposal is for (from the skill's answer, not from the LLM)."""
+    return next(r["proposal"]["serial"] for name, _, r in calls if name == "propose_parts_order" and r.get("accepted"))
+
+
+def add_visit(result: TriageResult, answer: dict) -> None:
+    """R-SCH-3: an unmet SLA is flagged; an unreachable scheduler leaves no visit and flags it."""
+    flags = list(result.flags or [])
+    if "visit" in answer:
+        result.visit = Visit(**answer["visit"])
+        if answer["visit"].get("within_sla") is False:
+            flags.append("sla_breach")
+    else:
+        flags.append("scheduling_unavailable")
+    result.flags = flags
+
+
 async def triage(question: str, user: str, agent_id: str = "triage-agent", model: Model | None = None,
                  trace: str | None = None) -> tuple[TriageResult, str]:
     trace = trace or audit.new_trace()
@@ -113,6 +148,8 @@ async def triage(question: str, user: str, agent_id: str = "triage-agent", model
     except Stop as s:
         stop = s.answer
     result = assemble(draft, calls, stop)
+    if result.parts:  # a visit is proposed by Field Ops' agent over A2A — code decides when, never the LLM
+        add_visit(result, await schedule(headers, result_serial(calls), result.urgency))
     alias = getattr(model, "model_name", str(model))
     audit.write(trace, "triage-agent", "answered", badge, model_alias=alias, provider_model=served_by(alias),
                 answered_by=answered_by, tokens={"in": usage.input_tokens, "out": usage.output_tokens} if usage else None,

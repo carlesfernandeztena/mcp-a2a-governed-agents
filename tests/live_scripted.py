@@ -28,7 +28,8 @@ async def main():
     r, trace = await triage("SN 5123 E-47", "yusuf", model=sc1)
     d = r.dump()
     assert [p["part_number"] for p in d["parts"]] == ["GK-80-B"] and d["approval"]["state"] == "pending" and d["urgency"] == "routine", d
-    print("SC1 ok", trace)
+    assert (d["visit"]["engineer"], d["visit"]["start"], d["visit"]["within_sla"]) == ("mariona", "2026-10-05T14:00:00+02:00", True), d
+    print("SC1 ok (visit over A2A)", trace)
 
     r, _ = await triage("SN 7001", "yusuf", model=script(("get_instrument_context", {"serial": "7001"}), ("final", FINAL)))
     assert r.dump()["status"] == "denied" and r.dump()["denial"]["reason"] == "territory"

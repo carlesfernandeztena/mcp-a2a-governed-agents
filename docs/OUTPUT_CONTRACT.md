@@ -83,15 +83,15 @@ Part numbers: `GK-80-A`, `GK-80-B` (GasketKit 80-A/-B), `CMP-CX` (Compressor CX)
 
 ## 2. Scheduling handoff (A2A, `triage-agent` → `scheduling-agent`)
 
-Request:
+Request (an A2A message with one data part):
 ```json
-{ "serial": "5123", "site": "BarnaLabs", "country": "ES", "contract_tier": "gold", "urgency": "routine" }
+{ "serial": "5123", "urgency": "routine" }
 ```
-`country` picks which engineers can visit (R-SCH-2). Who is asking is not in the payload: `scheduling-agent` reads it from the badge and re-checks the territory itself (R-ACC-5).
-Response:
+That is all it trusts from the caller. Who is asking comes from the badge (same badge, bearer auth declared in the Agent Card); the freezer's country and contract come from the data products, read with that badge, so territory is re-checked at the door (R-ACC-5). Only agents whose manifest includes `propose_visit` may call it.
+Response (an A2A message with one data part):
 ```json
-{ "engineer": "mariona", "start": "2026-10-05T14:00:00+02:00", "end": "2026-10-05T16:00:00+02:00",
-  "sla_deadline": "2026-10-06T18:00:00+02:00", "within_sla": true }
+{ "visit": { "engineer": "mariona", "start": "2026-10-05T14:00:00+02:00", "end": "2026-10-05T16:00:00+02:00",
+             "sla_deadline": "2026-10-06T18:00:00+02:00", "within_sla": true } }
 ```
 Earliest slot is after the deadline, or no slot at all → `within_sla: false` and the triage result gets `sla_breach`. No contract → no SLA: `sla_deadline` and `within_sla` are **absent** (not applicable, not unknown). Agent unreachable → no `visit` field + flag `scheduling_unavailable`. No free slot at all → no `engineer`/`start`/`end`, `within_sla: false`.
 
