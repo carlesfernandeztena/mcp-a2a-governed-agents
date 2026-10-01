@@ -74,8 +74,12 @@ def test_candidate_v04_boundary_bug_rejects_the_right_part():
         parts.VERSION = "1.0"
 
 
-def test_reported_display_temperature_can_only_raise_the_risk():
-    assert instrument_context.get_instrument_context("5123", ctx(), reported_temp_c=-65)["samples_at_risk"] is True
+def test_telemetry_wins_over_a_reported_reading_and_conflicts_are_flagged():
+    r = instrument_context.get_instrument_context("5123", ctx(), reported_temp_c=-65)   # telemetry says -74.0
+    assert r["samples_at_risk"] is False and r["samples_at_risk_source"] == "telemetry"
+    assert "reported_reading_conflicts" in r["flags"]
+    agrees = instrument_context.get_instrument_context("5123", ctx(), reported_temp_c=-74)
+    assert "reported_reading_conflicts" not in agrees["flags"]
 
 
 def test_catalog_outage_is_an_error_not_a_missing_part():

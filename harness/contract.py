@@ -17,7 +17,7 @@ def serial_of(value) -> str:
 
 Cause = Literal["door_gasket_worn", "compressor_failing", "condenser_filter_clogged", "door_ajar", "unknown"]
 Flag = Literal["chargeable_needs_po", "sla_breach", "scheduling_unavailable", "telemetry_missing",
-               "instrument_not_found", "suspicious_text_in_data"]
+               "instrument_not_found", "suspicious_text_in_data", "reported_reading_conflicts"]
 
 
 class _Model(BaseModel):

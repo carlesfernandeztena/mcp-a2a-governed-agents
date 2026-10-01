@@ -49,11 +49,11 @@ Stack-neutral shapes that the synthetic data and eval cases are written against.
 | `diagnosis.summary` | short text | LLM |
 | `evidence[]` | `ref` = an existing record id + the `claim` it supports | LLM chooses; **G2 verifies** every ref exists and supports the claim |
 | `parts[]` | part number, name, qty, `chargeable` | LLM picks the part; **`propose_parts_order` skill** checks it in code (R-ORD-1/2/3/5/6/7) and sets `chargeable` from the contract |
-| `samples_at_risk` | `true` (latest cabinet temperature warmer than −70 °C) · `false` · `null` (unknown: no current telemetry and no reported reading) | **`get_instrument_context` skill**, computed in code from the latest telemetry, or from a display temperature the engineer reported (the LLM only extracts that number and passes it to the skill). The LLM never compares temperatures |
+| `samples_at_risk` | `true` (latest cabinet temperature warmer than −70 °C) · `false` · `null` (unknown: no current telemetry and no reported reading) | **`get_instrument_context` skill**, computed in code from the latest telemetry, or, only when there is no fresh telemetry, from a display temperature the engineer reported (the LLM only extracts that number); a contradicting report is flagged `reported_reading_conflicts`. The LLM never compares temperatures |
 | `urgency` | `urgent` if `samples_at_risk` is `true`, otherwise `routine` | **harness**, derived from `samples_at_risk` |
 | `advice[]` | short text | LLM |
 | `visit` | slot; **absent** when no visit is proposed or scheduling is unreachable (then flag `scheduling_unavailable`) | **scheduling-agent** (A2A), never the LLM |
-| `flags[]` | `chargeable_needs_po` · `sla_breach` · `scheduling_unavailable` · `telemetry_missing` · `instrument_not_found` · `suspicious_text_in_data` | skills / scheduling-agent / harness |
+| `flags[]` | `chargeable_needs_po` · `sla_breach` · `scheduling_unavailable` · `telemetry_missing` · `instrument_not_found` · `suspicious_text_in_data` · `reported_reading_conflicts` | skills / scheduling-agent / harness |
 | `approval` | required for any T3 action | **harness** (R-ORD-4) |
 | `denial` | only present when `status` is `denied`: `{ "reason": "territory" \| "tier" \| "regulated", "enforced_at": "<data product or harness>" }` — territory = who is asking; tier / regulated = what is being asked | **harness / data product** |
 
