@@ -33,6 +33,7 @@ COMMANDS = [  # (name, scene, one line) in demo order
     ("stop", "SC8", "stop a service, to break a seam on purpose"),
     ("start", "SC8", "start it again"),
     ("stubs", "SC9", "the two deliberate stubs in the code"),
+    ("path", "", "the suggested demo path, step by step"),
     ("who", "", "the people and agents"),
     ("freezers", "", "the installed base: serial, customer, territory"),
 ]
@@ -96,7 +97,32 @@ def overview() -> str:
     width = max(len(n) for n, _, _ in COMMANDS)
     lines = [f"  {n:<{width}}  {d}" for n, _, d in COMMANDS]
     return (f"{BLURB}\n\nusage: demo <command> [...]     demo <command> -h for who / what / examples\n\n"
-            + "\n".join(lines) + "\n\nTab completes commands, people, serials, parts and services.")
+            + "\n".join(lines) + "\n\nTab completes commands, people, serials, parts and services.\n\n" + demo_path())
+
+
+HAPPY = '"Cryonix 80 SN 5123 at BarnaLabs, error E-47, temperature creeping up."'
+PATH = [  # (command, what it shows): the demo in order
+    ("demo follow", "(second terminal) live audit stream, keep it open"),
+    ("demo eval rc --background", "a candidate with a parts-skill bug goes through the gates"),
+    (f"demo ask yusuf {HAPPY}", "happy path: diagnosis, part, visit over A2A"),
+    ("demo view", "audit card: who, what it saw, which model"),
+    ("demo approve yusuf", "refused: engineers don't approve"),
+    ("demo approve grant", "approved; ERP stubbed"),
+    ("demo skill order 5123 GK-80-A", "the plausible wrong part, refused by code"),
+    ('demo ask yusuf "Faraway Pharma in Boston reports E-47 on SN 7001."', "denied: territory"),
+    ("demo registry", "computed vs certified tier"),
+    ('demo ask consuelo "Order a GasketKit 80-B for SN 5123 at BarnaLabs."', "denied: tier"),
+    ("demo eval last", "the candidate: BLOCKED"),
+    ("demo promotions", "every promotion decision"),
+    ("demo gateway use sonnet", "provider swap: one line"),
+    (f"demo ask yusuf {HAPPY}", "same question, other provider; then demo view"),
+    ("demo stop scheduling-agent", "break a seam; ask again, then demo start scheduling-agent"),
+    ("demo stubs", "the two deliberate stubs"),
+]
+
+
+def demo_path() -> str:
+    return "Suggested demo path:\n" + "\n".join(f"  {i:>2}. {c}\n        → {d}" for i, (c, d) in enumerate(PATH, 1))
 
 
 def _host_only(what: str) -> None:
@@ -285,6 +311,7 @@ def main() -> None:
     s = sub.add_parser("stubs", help="the two stubs", description="The two deliberate stubs, marked with a STUB comment in the code.")
     s.set_defaults(run=lambda a: subprocess.run(["grep", "-rnI", "-A2", "--include=*.py", "# STUB[:]", "harness", "cli"], cwd=ROOT, check=False))
 
+    sub.add_parser("path", help="suggested demo path").set_defaults(run=lambda a: print(demo_path()))
     sub.add_parser("who", help="people and agents").set_defaults(run=lambda a: print(who_text()))
     sub.add_parser("freezers", help="the installed base").set_defaults(run=lambda a: print(f"{freezers_text()}\n\n{parts_text()}"))
 
