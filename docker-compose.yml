@@ -30,6 +30,16 @@ services:
     environment: {DATA_URL: "http://dataproducts:8001"}
     ports: ["8102:8102"]
 
+  cli:                           # docker compose run --rm cli python -m cli.ask "…"
+    <<: *app
+    profiles: [cli]
+    depends_on: [gateway, skill-context, skill-manuals, skill-parts]
+    environment:
+      GATEWAY_URL: "http://gateway:4000"
+      SKILL_CONTEXT_URL: "http://skill-context:8101/mcp"
+      SKILL_MANUALS_URL: "http://skill-manuals:8102/mcp"
+      SKILL_PARTS_URL: "http://skill-parts:8103/mcp"
+
   skill-parts:                   # MCP skill propose_parts_order (T3)
     <<: *app
     command: ["python", "-m", "skills.parts"]

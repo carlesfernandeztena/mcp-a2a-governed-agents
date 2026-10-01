@@ -8,7 +8,7 @@ from pathlib import Path
 
 os.environ.setdefault("AUDIT_LOG", str(Path(tempfile.mkdtemp()) / "audit.jsonl"))  # tests never touch the real audit log
 
-logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.disable(logging.INFO)  # quiet the HTTP client logs
 failed = 0
 for mod in sorted(m.name for m in pkgutil.iter_modules([str(Path(__file__).parent)]) if m.name.startswith("test_")):
     module = importlib.import_module(f"tests.{mod}")
