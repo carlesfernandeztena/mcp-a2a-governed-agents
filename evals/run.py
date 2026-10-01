@@ -29,7 +29,7 @@ async def run_all(cases: list[dict], parallel: int = 4) -> dict[str, dict]:
     async def one(case):
         async with gate:
             try:
-                result, trace = await asyncio.wait_for(triage(case["input"], case["user"], case.get("agent", "triage-agent")), 180)
+                result, trace = await asyncio.wait_for(triage(case["input"], case["user"], case.get("agent", "triage-agent"), eval_case=case["id"]), 180)
                 return case["id"], result.dump() | {"_trace": trace}
             except Exception as e:  # a crash is a failed case, not a crashed eval
                 return case["id"], {"status": "error", "error": f"{type(e).__name__}: {e}"}

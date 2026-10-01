@@ -170,13 +170,13 @@ def assemble(draft: TriageDraft | None, calls: list[tuple[str, dict, dict]], sto
 
 
 async def triage(question: str, user: str, agent_id: str = "triage-agent", model: Model | None = None,
-                 trace: str | None = None) -> tuple[TriageResult, str]:
+                 trace: str | None = None, eval_case: str | None = None) -> tuple[TriageResult, str]:
     trace = trace or audit.new_trace()
     token = badges.exchange(badges.user_badge(user), badges.agent_badge(agent_id))
     badge = badges.verify(token)
     model = model or gateway_model()
     alias = getattr(model, "model_name", str(model))
-    audit.write(trace, "triage-agent", "question", badge, question=question)
+    audit.write(trace, "triage-agent", "question", badge, question=question, **({"eval_case": eval_case} if eval_case else {}))
 
     entry = badges.registry()[agent_id]
     if computed_tier(entry["manifest"]) > entry["certified_tier"]:
