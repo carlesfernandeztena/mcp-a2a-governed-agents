@@ -52,3 +52,9 @@ services:
     command: ["python", "-m", "skills.parts"]
     environment: {DATA_URL: "http://dataproducts:8001"}
     ports: ["8103:8103"]
+
+  skill-parts-rc:                # sandbox build of the same skill, v0.4 with the deliberate regression (SC7)
+    <<: *app
+    command: ["python", "-m", "skills.parts"]
+    environment: {DATA_URL: "http://dataproducts:8001", PARTS_SKILL_VERSION: "0.4", PORT: "8113"}
+    ports: ["8113:8113"]

@@ -5,3 +5,4 @@ __pycache__/
 *.docx
 .keys/
 audit/
+evals/results/
