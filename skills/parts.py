@@ -90,4 +90,4 @@ def propose_parts_order(serial: str, part_number: str, ctx: Context, qty: int = 
 
 
 if __name__ == "__main__":
-    mcp.run("streamable-http", host="0.0.0.0", port=8103)
+    mcp.run("streamable-http", host="0.0.0.0", port=int(os.environ.get("PORT", 8103)))

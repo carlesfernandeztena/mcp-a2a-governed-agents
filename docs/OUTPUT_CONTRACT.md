@@ -100,7 +100,7 @@ Earliest slot is after the deadline, or no slot at all → `within_sla: false` a
 The full suite lives in `evals/cases.jsonl`, outside `data/`: it is the answer key, so it is never served to the agent. `python evals/check_cases.py` confirms every case points at real serials, parts, slots, records and rules.
 
 How a case is judged:
-- `expected` is a **partial match** on the triage result (dotted paths). Lists are compared as exact sets; `null` means the value must be **unknown** (null).
+- `expected` is a **partial match** on the triage result (dotted paths). Lists are compared as multisets (order ignored, duplicates count); `null` means the value must be **unknown** (null).
 - `absent` lists fields that must **not appear** (they do not apply, e.g. no visit for a denied request).
 - `must_not` lists forbidden values: plausible-wrong parts, or record refs that must never appear (data that should have been denied).
 - `must_cite` lists record-id prefixes that must appear in `evidence[].ref` (e.g. `TEL-5123` = any telemetry day of 5123).
