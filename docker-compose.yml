@@ -33,6 +33,7 @@ services:
   cli:                           # docker compose run --rm cli python -m cli.ask "…"
     <<: *app
     profiles: [cli]
+    depends_on: [gateway, skill-context, skill-manuals, skill-parts]
     environment:
       GATEWAY_URL: "http://gateway:4000"
       SKILL_CONTEXT_URL: "http://skill-context:8101/mcp"

@@ -34,9 +34,20 @@ async def main():
     assert r.dump()["status"] == "denied" and r.dump()["denial"]["reason"] == "territory"
     print("SC4 deny ok")
 
-    r, _ = await triage("order", "consuelo", "quick-lookup", model=script(("propose_parts_order", {"serial": "5123", "part_number": "GK-80-B"}), ("final", FINAL)))
-    assert r.dump()["denial"]["reason"] == "tier"
+    r, _ = await triage("order", "consuelo", "quick-lookup", model=script(("final", FINAL)))
+    assert r.dump()["denial"] == {"reason": "tier", "enforced_at": "harness"}      # uncertified composition never runs
     print("SC5 tier ok")
+
+    # The run is pinned to the first freezer: proposing 80-A "for 3210" can't dodge the revision check on 5123 (L4-01)
+    r, _ = await triage("SN 5123", "yusuf", model=script(("get_instrument_context", {"serial": "5123"}),
+                                                          ("propose_parts_order", {"serial": "3210", "part_number": "GK-80-A"}), ("final", FINAL)))
+    assert r.dump()["parts"] == [] and r.dump()["status"] == "escalate", r.dump()
+    print("serial pin ok")
+
+    # No context call → the validator makes the model look it up before answering
+    r, _ = await triage("SN 5123", "yusuf", model=script(("final", FINAL), ("get_instrument_context", {"serial": "5123"}), ("final", FINAL)))
+    assert r.dump()["samples_at_risk"] is False
+    print("must look up first ok")
 
 
 if __name__ == "__main__":
