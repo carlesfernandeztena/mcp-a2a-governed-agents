@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 
+import httpx
 from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
 from pydantic_ai import Agent
@@ -39,6 +40,15 @@ class Stop(Exception):
 def gateway_model(alias: str = "triage-llm") -> Model:
     """Agents only ever know the gateway alias; which provider serves it is the gateway's business."""
     return OpenAIChatModel(alias, provider=LiteLLMProvider(api_base=GATEWAY_URL))
+
+
+def served_by(alias: str) -> str | None:
+    """Ask the gateway which provider model serves the alias right now (lineage: "which model answered")."""
+    try:
+        info = httpx.get(f"{GATEWAY_URL}/model/info", timeout=5).json()["data"]
+        return next(m["litellm_params"]["model"] for m in info if m["model_name"] == alias)
+    except Exception:  # scripted test models have no gateway behind them
+        return None
 
 
 def _as_dict(result) -> dict:
@@ -103,7 +113,8 @@ async def triage(question: str, user: str, agent_id: str = "triage-agent", model
     except Stop as s:
         stop = s.answer
     result = assemble(draft, calls, stop)
-    audit.write(trace, "triage-agent", "answered", badge, model_alias=getattr(model, "model_name", str(model)),
+    alias = getattr(model, "model_name", str(model))
+    audit.write(trace, "triage-agent", "answered", badge, model_alias=alias, provider_model=served_by(alias),
                 answered_by=answered_by, tokens={"in": usage.input_tokens, "out": usage.output_tokens} if usage else None,
                 tools=[{"skill": n, "args": a} for n, a, _ in calls], result=result.dump())
     return result, trace
