@@ -8,17 +8,18 @@ from skills._skill import Call, blocked, latest_fresh, run, seg, serial_of
 mcp = MCPServer("instrument-context", instructions="Everything known about one freezer, for diagnosis.")
 
 
-def sample_risk(latest: dict | None, reported_temp_c: float | None) -> tuple[bool | None, str | None]:
-    """R-DGN-7 in code. Samples are at risk if the latest reading OR a display temperature the engineer
-    reports is warmer than the limit (safety first). None = unknown: no current reading of any kind."""
+def sample_risk(latest: dict | None, reported_temp_c: float | None) -> tuple[bool | None, str | None, bool]:
+    """R-DGN-7 in code. Records win over claims (R-SAF-4): fresh telemetry decides; a display temperature the
+    engineer reports is used only when there is no fresh telemetry. If the report contradicts fresh telemetry,
+    the answer is flagged for a human instead of trusting either silently. Returns (at_risk, source, conflict);
+    at_risk None = unknown (no current reading of any kind)."""
     limit = rules()["diagnosis"]["samples_at_risk_above_c"]
-    if reported_temp_c is not None and reported_temp_c > limit:
-        return True, "reported_by_engineer"
     if latest:
-        return latest["cabinet_temp_c"] > limit, "telemetry"
+        at_risk = latest["cabinet_temp_c"] > limit
+        return at_risk, "telemetry", reported_temp_c is not None and (reported_temp_c > limit) != at_risk
     if reported_temp_c is not None:
-        return False, "reported_by_engineer"
-    return None, None
+        return reported_temp_c > limit, "reported_by_engineer", False
+    return None, None, False
 
 
 def context(call: Call, serial: str, reported_temp_c: float | None = None) -> dict:
@@ -29,8 +30,9 @@ def context(call: Call, serial: str, reported_temp_c: float | None = None) -> di
     records = call.data("/service-records", serial=serial)
     telemetry = call.data("/telemetry", serial=serial)
     latest = latest_fresh(telemetry)
-    at_risk, source = sample_risk(latest, reported_temp_c)
-    flags = [f for f, on in (("telemetry_missing", latest is None), ("suspicious_text_in_data", any(s["suspicious"] for s in records))) if on]
+    at_risk, source, conflict = sample_risk(latest, reported_temp_c)
+    flags = [f for f, on in (("telemetry_missing", latest is None), ("suspicious_text_in_data", any(s["suspicious"] for s in records)),
+                             ("reported_reading_conflicts", conflict)) if on]
     call.log("served", serial=serial, samples_at_risk=at_risk, risk_source=source, flags=flags)
     return {
         "instrument": instrument,
