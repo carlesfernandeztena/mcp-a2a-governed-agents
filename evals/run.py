@@ -14,7 +14,7 @@ import time
 from rich.console import Console
 from rich.table import Table
 
-from agents.triage.agent import triage
+from agents.triage.agent import GATEWAY_URL, SCHEDULING_URL, SKILL_URLS, gateway_route, triage
 from evals.gates import gate_results
 from harness import audit
 from harness.rules import ROOT
@@ -28,7 +28,7 @@ async def run_all(cases: list[dict], parallel: int = 4) -> dict[str, dict]:
     async def one(case):
         async with gate:
             try:
-                result, trace = await triage(case["input"], case["user"], case.get("agent", "triage-agent"))
+                result, trace = await asyncio.wait_for(triage(case["input"], case["user"], case.get("agent", "triage-agent")), 180)
                 return case["id"], result.dump() | {"_trace": trace}
             except Exception as e:  # a crash is a failed case, not a crashed eval
                 return case["id"], {"status": "error", "error": f"{type(e).__name__}: {e}"}
@@ -57,14 +57,17 @@ if __name__ == "__main__":
     a = p.parse_args()
     cases = [c for c in CASES if not a.only or c["id"] in a.only]
     start = time.time()
+    build = {"skills": SKILL_URLS, "scheduling": SCHEDULING_URL, "gateway": GATEWAY_URL,
+             "triage_llm": asyncio.run(gateway_route("triage-llm"))}   # what actually ran, not just a label
     results = asyncio.run(run_all(cases))
-    gates = gate_results(cases, results)
-    decision = "certified" if not a.only and all(not g["failed"] for g in gates.values()) else "blocked"
     out = ROOT / "evals" / "results" / f"{time.strftime('%Y%m%dT%H%M%S')}.json"
     out.parent.mkdir(exist_ok=True)
-    out.write_text(json.dumps({"candidate": a.candidate, "decision": decision, "gates": gates, "results": results}, indent=1, ensure_ascii=False))
+    out.write_text(json.dumps({"candidate": a.candidate, "build": build, "results": results}, indent=1, ensure_ascii=False))  # raw first
+    gates = gate_results(cases, results)
+    decision = "certified" if not a.only and all(not g["failed"] for g in gates.values()) else "blocked"
+    out.write_text(json.dumps({"candidate": a.candidate, "build": build, "decision": decision, "gates": gates, "results": results}, indent=1, ensure_ascii=False))
     if not a.only:
-        audit.write(audit.new_trace(), "evals", "promotion", None, candidate=a.candidate, decision=decision,
+        audit.write(audit.new_trace(), "evals", "promotion", None, candidate=a.candidate, build=build, decision=decision,
                     gates={g: {"cases": r["cases"], "failed": sorted(r["failed"])} for g, r in gates.items()}, results_file=out.name)
     show(gates, decision if not a.only else "blocked (subset run, no decision)", a.candidate, time.time() - start)
     print(f"details: {out.relative_to(ROOT)}")

@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 
 import httpx
-from a2a.client import ClientConfig, ClientFactory
+from a2a.client import A2ACardResolver, ClientConfig, ClientFactory
 from a2a.helpers.proto_helpers import get_data_parts, new_data_message
 from a2a.types.a2a_pb2 import Role, SendMessageRequest
 from fastmcp import Client
@@ -60,7 +60,9 @@ async def schedule(headers: dict, serial: str, urgency: str) -> dict:
     """A2A handoff to Field Ops' scheduling-agent, carrying the same badge. Returns its answer, or an error."""
     try:
         async with httpx.AsyncClient(headers=headers, timeout=10) as http:
-            client = await ClientFactory(ClientConfig(httpx_client=http, streaming=False)).create_from_url(SCHEDULING_URL)
+            card = await A2ACardResolver(http, SCHEDULING_URL).get_agent_card()
+            card.supported_interfaces[0].url = SCHEDULING_URL  # we reach it at the address we were given (host or container network)
+            client = ClientFactory(ClientConfig(httpx_client=http, streaming=False)).create(card)
             request = SendMessageRequest(message=new_data_message({"serial": serial, "urgency": urgency}, role=Role.ROLE_USER))
             async for event in client.send_message(request):
                 if event.HasField("message"):

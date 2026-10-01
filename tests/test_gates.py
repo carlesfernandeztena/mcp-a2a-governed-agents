@@ -45,6 +45,25 @@ def test_null_absent_and_empty_list_conventions():
     assert check(CASES["L3-02"], escalated | {"visit": {"engineer": "x"}})["action"]  # visit must be absent
 
 
+def test_denied_answer_may_not_leak_any_day_of_the_denied_freezer():
+    leak = {"status": "denied", "denial": {"reason": "territory", "enforced_at": "x"}, "parts": [],
+            "evidence": [{"ref": "TEL-7001-2026-10-01", "claim": "-76.0 °C"}]}
+    assert any("forbidden" in f for f in check(CASES["L4-02"], leak)["action"])
+
+
+def test_a_crash_passes_nothing():
+    crashed = {"status": "error", "error": "Timeout"}
+    assert all(check(CASES["L4-08"], crashed).values())
+
+
+def test_number_check_ignores_ids_codes_durations_and_reads_commas():
+    from evals.gates import numbers_match
+    cited = ["TEL-5123-2026-09-18", "TEL-5123-2026-10-01"]
+    assert numbers_match("TEL-5123-2026-10-01", "Freezer 5123 (Cryonix 80): E47 since 1 Oct 2026, −80.0 → -74,0 °C over 14 days", cited, "5123")
+    assert not numbers_match("TEL-5123-2026-10-01", "Cabinet at -72.5 °C", cited, "5123")
+    assert not numbers_match("TEL-5123-2026-10-01", "Cabinet at 74.0 °C", cited, "5123")      # sign matters
+
+
 def test_a_gate_fails_if_any_of_its_cases_fails():
     results = {"L2-01": GOOD, "L2-02": GOOD}
     gates = gate_results([CASES["L2-01"], CASES["L2-02"]], results)

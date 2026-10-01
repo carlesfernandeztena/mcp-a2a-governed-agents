@@ -56,32 +56,43 @@ def belongs(ref: str, serial: str | None) -> bool:
     return ref == f"INS-{serial}" or ref.startswith(f"TEL-{serial}-")
 
 
-def numbers_match(ref: str, claim: str, cited: list[str] = ()) -> bool:
-    """Telemetry claims must quote numbers that exist in the telemetry the answer cites (the classic hallucination
-    spot). A trend claim may combine days, so any cited telemetry record of the same freezer counts."""
+NOT_MEASUREMENTS = re.compile(  # numbers in a claim that are not readings: dates, times, ids, codes, models, durations
+    r"\d{4}-\d{2}-\d{2}|\b\d{1,2}\s+[A-Za-z]{3,9}\.?\s+\d{4}\b|\b\d{1,2}:\d{2}\b|\b[A-Z]{1,4}-?\d+(?:-\d+)*\b"
+    r"|\bSN\s*\d+|\b(?:rev(?:ision)?|serial|freezer|Cryonix)\s*\d*\w*|\b\d+\s*(?:days?|weeks?|months?|years?|points?|hours?|h)\b", re.I)
+
+
+def numbers_match(ref: str, claim: str, cited: list[str] = (), serial: str | None = None) -> bool:
+    """Telemetry claims must quote readings that exist in the telemetry the answer cites (the classic hallucination
+    spot). A trend claim may combine days, so any cited telemetry record of the same freezer counts.
+    ponytail: a number that happens to appear in another column of a cited day also passes; stricter = per-field matching."""
     if not ref.startswith("TEL-"):
         return True
-    text = claim.replace("−", "-")
-    text = re.sub(r"\d{4}-\d{2}-\d{2}|\b[A-Z]{1,4}-\d+(?:-\d+)*\b|\bSN\s*\d+|\b(?:rev(?:ision)?|serial)\s*\w+", " ", text, flags=re.I)  # dates, codes (E-47), ids, serials
+    text = re.sub(r"(\d),(\d)", r"\1.\2", claim.replace("−", "-").replace("–", "-"))   # unicode minus, decimal commas
+    if serial:
+        text = re.sub(rf"\b{serial}\b", " ", text)
+    text = NOT_MEASUREMENTS.sub(" ", text)
     freezer = ref.rsplit("-", 3)[0]
     values = [float(v) for r in {ref, *(c for c in cited if c.startswith(freezer + "-") and c in TELEMETRY)}
               for v in TELEMETRY[r].values() if re.fullmatch(r"-?\d+(\.\d+)?", v)]
-    return all(any(abs(float(n) - v) <= 0.05 or abs(abs(float(n)) - abs(v)) <= 0.05 for v in values)
-               for n in re.findall(r"-?\d+(?:\.\d+)?", text))
+    return all(any(abs(float(n) - v) <= 0.05 for v in values) for n in re.findall(r"-?\d+(?:\.\d+)?", text))
 
 
 def check(case: dict, result: dict) -> dict[str, list[str]]:
     """Returns failure reasons per check family: 'action' (G1/G3) and 'grounding' (G2)."""
     fails = {"action": [], "grounding": []}
+    if result.get("status") == "error":  # a crash never passes anything
+        return {"action": [f"run failed: {result.get('error')}"], "grounding": [f"run failed: {result.get('error')}"]}
     for path, expected in case["expected"].items():
         actual = get(result, path)
         if actual is _MISSING and isinstance(expected, list) and not expected:
             actual = []  # an absent list is an empty list
         if not _same(actual, expected):
-            fails["action"].append(f"{path}: expected {expected!r}, got {None if actual is _MISSING else actual!r}")
+            fails["action"].append(f"{path}: expected {expected!r}, got {'<absent>' if actual is _MISSING else repr(actual)}")
     for path, forbidden in case.get("must_not", {}).items():
         actual = get(result, path)
-        hits = set(map(str, actual if isinstance(actual, list) else [actual])) & set(map(str, forbidden)) if actual is not _MISSING else set()
+        values = [str(a) for a in (actual if isinstance(actual, list) else [actual])] if actual is not _MISSING else []
+        # evidence refs are matched by prefix (TEL-7001 forbids every day of 7001); other values exactly
+        hits = {a for a in values for f in forbidden if (a.startswith(f) if path == "evidence[].ref" else a == str(f))}
         if hits:
             fails["action"].append(f"{path}: forbidden {sorted(hits)}")
     for path in case.get("absent", []):
@@ -97,7 +108,7 @@ def check(case: dict, result: dict) -> dict[str, list[str]]:
             fails["grounding"].append(f"{e['ref']}: no such record")
         elif not belongs(e["ref"], serial):
             fails["grounding"].append(f"{e['ref']}: not about SN {serial}")
-        elif not numbers_match(e["ref"], e["claim"], refs):
+        elif not numbers_match(e["ref"], e["claim"], refs, serial):
             fails["grounding"].append(f"{e['ref']}: numbers in '{e['claim'][:60]}' not in the record")
     return fails
 

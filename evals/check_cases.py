@@ -23,7 +23,10 @@ errors = []
 def check(ok, msg):
     if not ok: errors.append(msg)
 
+check(len(cases) == 29, f"expected 29 cases (14 core + 15 variations), found {len(cases)}: deleting cases must not make certification easier")
+check(len({c["id"] for c in cases}) == len(cases), "duplicate case ids")
 for c in cases:
+    check(bool(c["gates"]), f"{c['id']}: counts toward no gate")
     cid = c["id"]
     check(c["user"] in people, f"{cid}: unknown user {c['user']}")
     check(c["agent"] in agents, f"{cid}: unknown agent {c['agent']}")

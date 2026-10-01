@@ -35,7 +35,7 @@ class Diagnosis(_Model):
 
 class Evidence(_Model):
     # exactly one record id per item; a malformed ref is a validation error, so the model is asked to fix it
-    ref: str = Field(pattern=r"^(INS|SRV|TEL|MAN|PRT)-[A-Za-z0-9-]+$", description="one record id, e.g. TEL-5123-2026-10-01")
+    ref: str = Field(pattern=r"^(INS|SRV|TEL|MAN|PRT)-[A-Z0-9-]+$", description="one record id, e.g. TEL-5123-2026-10-01")
     claim: str
 
 
