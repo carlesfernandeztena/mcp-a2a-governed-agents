@@ -3,7 +3,7 @@ facts code must decide — telemetry freshness and sample risk (R-DGN-6/7). The 
 from mcp.server.mcpserver import Context, MCPServer
 
 from harness.rules import rules
-from skills._skill import Call, blocked, latest_fresh, run, seg
+from skills._skill import Call, blocked, latest_fresh, run, seg, serial_of
 
 mcp = MCPServer("instrument-context", instructions="Everything known about one freezer, for diagnosis.")
 
@@ -48,7 +48,7 @@ def context(call: Call, serial: str, reported_temp_c: float | None = None) -> di
 def get_instrument_context(serial: str, ctx: Context, reported_temp_c: float | None = None) -> dict:
     """Get one freezer's installed-base record, service history and daily telemetry, with sample risk decided by code.
     Pass reported_temp_c only if the engineer states a display temperature (e.g. -65)."""
-    return run(context, "get_instrument_context", ctx, serial=serial, reported_temp_c=reported_temp_c)
+    return run(context, "get_instrument_context", ctx, serial=serial_of(serial), reported_temp_c=reported_temp_c)
 
 
 if __name__ == "__main__":

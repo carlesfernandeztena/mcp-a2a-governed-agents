@@ -18,6 +18,7 @@ from a2a.helpers.proto_helpers import get_data_parts, new_data_message
 from a2a.types.a2a_pb2 import Role, SendMessageRequest
 from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
+from pydantic import ValidationError
 from pydantic_ai import Agent, ModelRetry, capture_run_messages
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.messages import ModelResponse
@@ -29,6 +30,7 @@ from pydantic_ai.usage import UsageLimits
 from harness import audit, badges
 from harness.contract import Approval, Denial, Diagnosis, Part, TriageDraft, TriageResult, Visit
 from harness.policy import computed_tier
+from harness.contract import serial_of
 from harness.rules import rules
 
 GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://localhost:4000")
@@ -72,11 +74,12 @@ def add_visit(result: TriageResult, answer: dict) -> TriageResult:
     """R-SCH-3: an unmet SLA is flagged; an unreachable scheduler leaves no visit and flags it."""
     flags = list(result.flags or [])
     fields = result.dump() | {"flags": flags}
-    if "visit" in answer:
+    try:  # another team's agent: never trust the shape of its answer
         fields["visit"] = Visit(**answer["visit"])
         if answer["visit"].get("within_sla") is False:
             flags.append("sla_breach")
-    else:
+    except (KeyError, TypeError, ValidationError):
+        fields.pop("visit", None)
         flags.append("scheduling_unavailable")
     return TriageResult.model_validate(fields)
 
@@ -159,8 +162,9 @@ async def triage(question: str, user: str, agent_id: str = "triage-agent", model
     async def watch(ctx, call_tool, name, args):
         serial = args.get("serial")
         if serial is not None:
-            pinned.setdefault("serial", str(serial))
-            if str(serial) != pinned["serial"]:
+            serial = serial_of(serial)
+            pinned.setdefault("serial", serial)
+            if serial != pinned["serial"]:
                 return {"error": "serial_mismatch", "detail": f"this run is about SN {pinned['serial']}; ask a new question for another freezer"}
         result = _as_dict(await call_tool(name, args))
         calls.append((name, args, result))
@@ -189,10 +193,12 @@ async def triage(question: str, user: str, agent_id: str = "triage-agent", model
             raise
     responses = [m for m in messages if isinstance(m, ModelResponse)]
     result = assemble(draft, calls, stop)
+    scheduling = None
     if result.parts:  # a visit is proposed by Field Ops' agent over A2A — code decides when, never the LLM
-        result = add_visit(result, await schedule(headers, pinned["serial"], result.urgency))
+        scheduling = await schedule(headers, pinned["serial"], result.urgency)
+        result = add_visit(result, scheduling)
     audit.write(trace, "triage-agent", "answered", badge, model_alias=alias, gateway_route=await gateway_route(alias),
                 answered_by=responses[-1].model_name if responses else None,
                 tokens={"in": sum(r.usage.input_tokens for r in responses), "out": sum(r.usage.output_tokens for r in responses)},
-                tools=[{"skill": n, "args": a} for n, a, _ in calls], result=result.dump())
+                tools=[{"skill": n, "args": a} for n, a, _ in calls], scheduling=scheduling, result=result.dump())
     return result, trace

@@ -84,7 +84,7 @@ The skill checks R-ORD-1/2/3/5/6/7 in code on every call. A refused proposal com
 
 ### Scheduling
 - **R-SCH-0** Mock calendar: a hardcoded list of free slots for Yusuf + Mariona (Barcelona), Sven (Oslo) and Nate (Boston) until Fri 23 Oct; nothing beyond, and no same-day slots. Every visit is a 2-hour slot. The demo runs on a **frozen "today" = Fri 2 Oct 2026** (the real demo day), so SLA maths never drifts. Deadlines end at 18:00 local time. Weekends skipped; public holidays out of scope.
-- **R-SCH-1** Visit within the contract SLA: **Gold = 2 business days, Silver = 5**. Samples at risk → next business day. No contract → no SLA (earliest slot, best effort). *(SC1, L4-06)*
+- **R-SCH-1** Visit within the contract SLA: **Gold = 2 business days, Silver = 5**. Samples at risk → next business day. The visit must **end** by 18:00 on the deadline day. No contract → no SLA (earliest slot, best effort). *(SC1, L4-06)*
 - **R-SCH-2** Only slots where an engineer **covering that site's country** is actually free — **never invent a slot**. *(L4-06)*
 - **R-SCH-3** No valid slot inside SLA → propose the earliest one and **flag the SLA breach**. *(L4-06)*
 

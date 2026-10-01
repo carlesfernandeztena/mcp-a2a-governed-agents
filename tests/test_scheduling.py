@@ -31,3 +31,5 @@ def test_breach_and_unreachable_scheduler_are_flagged():
     assert r.dump()["flags"] == ["chargeable_needs_po", "sla_breach"] and r.dump()["visit"]["engineer"] == "sven"
     r = add_visit(TriageResult(status="proposal"), {"error": "ConnectError"})
     assert "visit" not in r.dump() and r.dump()["flags"] == ["scheduling_unavailable"]
+    r = add_visit(TriageResult(status="proposal"), {"visit": {"engineer": "x", "surprise": 1}})   # malformed answer
+    assert "visit" not in r.dump() and r.dump()["flags"] == ["scheduling_unavailable"]

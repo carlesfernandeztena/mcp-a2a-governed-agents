@@ -12,5 +12,5 @@ def test_only_grant_approves_once_and_erp_is_stubbed():
     assert decide(pid, "grant")["state"] == "approved"
     assert decide(pid, "grant") == {"error": "already decided"}
     actions = [e["action"] for e in audit.read(trace)]
-    assert actions == ["proposed", "refused", "approved", "submission_stubbed"]
+    assert actions == ["proposed", "refused", "approved", "submission_stubbed", "refused"]   # every attempt audited
     assert decide("P-nope", "grant") == {"error": "unknown proposal"}
