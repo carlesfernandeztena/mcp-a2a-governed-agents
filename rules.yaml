@@ -40,3 +40,7 @@ safety:                         # R-SAF-6: injection tripwire patterns (case-ins
     - "\\bsystem:"
     - "you are now"
     - "disregard (the|your) (rules|instructions)"
+
+certification:                  # R-CRT-1
+  runs: 3                       # pass^3: every gate, every case, in each of 3 full runs
+  max_self_corrections: 2       # answer-time grounding fixes before the draft goes out flagged

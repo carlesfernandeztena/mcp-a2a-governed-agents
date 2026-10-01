@@ -115,8 +115,10 @@ def telemetry(serial: str, c: Caller = Depends(caller)) -> list[dict]:
 @app.get("/manuals/search")
 def manuals(q: str, c: Caller = Depends(caller)) -> list[dict]:
     """simplification: keyword overlap over a handful of sections; production = hybrid search (PATH_TO_PRODUCTION)."""
-    terms = {t for t in re.findall(r"[\w-]+", q.lower()) if len(t) > 2}
-    scored = [(sum(t in (s["id"] + s["title"] + s["text"]).lower() for t in terms), s) for s in MANUAL]
+    words = re.findall(r"[\w-]+", q.lower())
+    terms = {t for w in words for t in (w, *w.split("-")) if len(t) > 2}   # "samples-at-risk" also counts as its words
+    # a query naming a section id gets that section first; otherwise keyword overlap
+    scored = [(100 * (s["id"].lower() in words) + sum(t in (s["id"] + s["title"] + s["text"]).lower() for t in terms), s) for s in MANUAL]
     return _served(c, "manuals", [s for score, s in sorted(scored, key=lambda x: -x[0]) if score][:3], query=q)
 
 

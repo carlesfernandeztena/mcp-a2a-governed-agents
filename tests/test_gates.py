@@ -57,7 +57,11 @@ def test_a_crash_passes_nothing():
 
 
 def test_number_check_ignores_ids_codes_durations_and_reads_commas():
-    from evals.gates import numbers_match
+    from evals.gates import RECORDS, problems
+
+    def numbers_match(ref, claim, cited, serial):
+        others = [{"ref": c, "claim": ""} for c in cited if c != ref]
+        return not problems([{"ref": ref, "claim": claim}] + others, RECORDS, serial)
     cited = ["TEL-5123-2026-09-18", "TEL-5123-2026-10-01"]
     assert numbers_match("TEL-5123-2026-10-01", "Freezer 5123 (Cryonix 80): E47 since 1 Oct 2026, −80.0 → -74,0 °C over 14 days", cited, "5123")
     assert not numbers_match("TEL-5123-2026-10-01", "Cabinet at -72.5 °C", cited, "5123")
@@ -67,9 +71,28 @@ def test_number_check_ignores_ids_codes_durations_and_reads_commas():
     assert numbers_match("TEL-5123-2026-10-01", claim, cited + ["MAN-CX80-E47"], "5123")
     assert not numbers_match("TEL-5123-2026-10-01", claim, cited, "5123")                     # without the manual cited
     assert not numbers_match("TEL-5123-2026-10-01", "compressor current 5 A", cited + ["MAN-CX80-E47"], "5123")  # manual-only number
+    assert numbers_match("TEL-5123-2026-10-01", "La temperatura pasó de -80.0 °C el 18/09 a -74.0 °C el 01/10", cited, "5123")  # dd/mm dates
 
 
 def test_a_gate_fails_if_any_of_its_cases_fails():
     results = {"L2-01": GOOD, "L2-02": GOOD}
     gates = gate_results([CASES["L2-01"], CASES["L2-02"]], results)
     assert not gates["G2"]["failed"].get("L2-01") and "L2-02" in gates["G3"]["failed"]
+
+
+def test_certification_needs_every_run_green_and_enough_runs():
+    from evals.run import decide
+    cases = [CASES["L2-01"], CASES["L2-02"]]
+    green = {"gates": {g: {"cases": 2, "failed": {}} for g in ("G1", "G2", "G3")}}
+    red = {"gates": {"G1": {"cases": 2, "failed": {}}, "G2": {"cases": 2, "failed": {"L2-02": ["x"]}}, "G3": {"cases": 2, "failed": {}}}}
+    assert decide(cases, [green, green, green], 3)[0] == "certified"
+    decision, gates, unstable = decide(cases, [green, red], 3)                 # stopped early after a red run
+    assert decision == "blocked" and unstable == {"L2-02": "1/2"} and gates["G2"]["failed"]["L2-02"] == ["run 2: x"]
+    assert decide(cases, [green], 1)[0] == "blocked"                           # one green run is not enough
+    assert decide(cases, [green, green, green], 3, subset=True)[0] == "blocked"
+
+
+def test_date_like_pairs_followed_by_units_are_still_checked():
+    from evals.gates import RECORDS, problems
+    cited = [{"ref": "TEL-5123-2026-10-01", "claim": "cabinet 12/14 °C now"}]
+    assert problems(cited, RECORDS, "5123")                                  # not a date: a made-up reading

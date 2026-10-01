@@ -19,7 +19,7 @@ from a2a.types.a2a_pb2 import Role, SendMessageRequest
 from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
 from pydantic import ValidationError
-from pydantic_ai import Agent, ModelRetry, capture_run_messages
+from pydantic_ai import Agent, ModelRetry, RunContext, capture_run_messages
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.messages import ModelResponse
 from pydantic_ai.models import Model
@@ -31,6 +31,7 @@ from harness import audit, badges
 from harness.contract import Approval, Denial, Diagnosis, Part, TriageDraft, TriageResult, Visit
 from harness.policy import computed_tier
 from harness.contract import serial_of
+from harness.grounding import problems
 from harness.rules import rules
 
 GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://localhost:4400")
@@ -41,7 +42,8 @@ SKILL_URLS = {
 }
 SCHEDULING_URL = os.environ.get("SCHEDULING_URL", "http://localhost:8201/")
 PROMPT = (Path(__file__).parent / "prompt.md").read_text(encoding="utf-8").replace("{today}", rules()["today"])
-LIMITS = UsageLimits(request_limit=10)  # cost cap per question
+LIMITS = UsageLimits(request_limit=16)  # cost cap per question, with room for self-corrections
+MAX_FIXES = rules()["certification"]["max_self_corrections"]
 
 
 class Stop(Exception):
@@ -111,6 +113,32 @@ def _context(calls: list[tuple[str, dict, dict]]) -> dict | None:
     return next((r for name, _, r in calls if name == "get_instrument_context" and "instrument" in r), None)
 
 
+def runtime_problems(draft: TriageDraft, calls: list[tuple[str, dict, dict]], serial: str | None) -> list[str]:
+    """Grounding problems in a draft, judged only against records the skills returned in this run. Required
+    citations follow from facts code already knows: fresh telemetry must be cited; samples at risk must cite the
+    manual's samples-at-risk section."""
+    records, required = {}, []
+    for name, args, r in calls:
+        if name == "get_instrument_context" and "instrument" in r:
+            records[r["instrument"]["id"]] = r["instrument"]
+            records |= {x["id"]: x for x in r["service_records"] + r["telemetry"]}
+            if r.get("latest_telemetry"):
+                required.append(f"TEL-{serial}")
+            if r.get("samples_at_risk") is True:
+                required.append("MAN-CX80-SAMPLES")
+        elif name == "search_manuals":
+            records |= {s["id"]: f"{s['title']} {s['text']}" for s in r.get("sections", [])}
+        elif name == "propose_parts_order":
+            if r.get("accepted"):
+                records[f"PRT-{r['proposal']['part_number']}"] = r["proposal"]
+            elif r.get("reason") not in (None, "not_in_catalog"):  # a refused catalog part was still looked up
+                records[f"PRT-{args['part_number']}"] = {"refused": r["reason"]}
+    found = problems([e.model_dump() for e in draft.evidence], records, serial, list(dict.fromkeys(required)))
+    if any("MAN-CX80-SAMPLES" in f for f in found) and "MAN-CX80-SAMPLES" not in records:
+        found.append("samples are at risk: call search_manuals('MAN-CX80-SAMPLES') and cite that section")
+    return found
+
+
 def assemble(draft: TriageDraft | None, calls: list[tuple[str, dict, dict]], stop: dict | None = None) -> TriageResult:
     """Harness post-processing: build the result from the LLM draft plus what the skills returned."""
     if stop and "denied" in stop:
@@ -176,12 +204,21 @@ async def triage(question: str, user: str, agent_id: str = "triage-agent", model
 
     toolsets = [MCPToolset(Client(StreamableHttpTransport(url, headers=headers)), process_tool_call=watch)
                 for skill, url in SKILL_URLS.items() if skill in entry["manifest"]]
-    agent = Agent(model, output_type=TriageDraft, instructions=PROMPT, toolsets=toolsets)
+    agent = Agent(model, output_type=TriageDraft, instructions=PROMPT, toolsets=toolsets, retries={"output": MAX_FIXES + 2})
+    corrections: list[list[str]] = []
+    unresolved: list[str] = []
 
     @agent.output_validator
-    def looked_it_up(draft: TriageDraft) -> TriageDraft:
-        if _context(calls) is None:
+    def grounded(ctx: RunContext, draft: TriageDraft) -> TriageDraft:
+        """The G2 checks, at answer time, against the records this run actually saw. A fix never spends the last
+        retry: when fixes run out, the draft goes out flagged grounding_unverified and the gates judge it."""
+        if _context(calls) is None and ctx.retry < ctx.max_retries:
             raise ModelRetry("Call get_instrument_context for the freezer first; answer only from what it returns.")
+        found = runtime_problems(draft, calls, pinned.get("serial"))
+        if found and len(corrections) < MAX_FIXES and ctx.retry < ctx.max_retries:
+            corrections.append(found)
+            raise ModelRetry("Fix your evidence before answering:\n- " + "\n- ".join(found))
+        unresolved[:] = found
         return draft
 
     draft, stop = None, None
@@ -191,10 +228,12 @@ async def triage(question: str, user: str, agent_id: str = "triage-agent", model
         except Stop as s:
             stop = s.answer
         except Exception as e:
-            audit.write(trace, "triage-agent", "failed", badge, model_alias=alias, error=f"{type(e).__name__}: {e}")
+            audit.write(trace, "triage-agent", "failed", badge, model_alias=alias, error=f"{type(e).__name__}: {e}", self_corrections=corrections)
             raise
     responses = [m for m in messages if isinstance(m, ModelResponse)]
     result = assemble(draft, calls, stop)
+    if unresolved and not stop:  # fixes ran out: say so in the answer, never pass it off as verified
+        result = TriageResult.model_validate(result.dump() | {"flags": [*(result.flags or []), "grounding_unverified"]})
     scheduling = None
     if result.parts:  # a visit is proposed by Field Ops' agent over A2A — code decides when, never the LLM
         scheduling = await schedule(headers, pinned["serial"], result.urgency)
@@ -202,5 +241,6 @@ async def triage(question: str, user: str, agent_id: str = "triage-agent", model
     audit.write(trace, "triage-agent", "answered", badge, model_alias=alias, gateway_route=await gateway_route(alias),
                 answered_by=responses[-1].model_name if responses else None,
                 tokens={"in": sum(r.usage.input_tokens for r in responses), "out": sum(r.usage.output_tokens for r in responses)},
-                tools=[{"skill": n, "args": a} for n, a, _ in calls], scheduling=scheduling, result=result.dump())
+                tools=[{"skill": n, "args": a} for n, a, _ in calls], scheduling=scheduling,
+                self_corrections=corrections, unresolved_grounding=unresolved, result=result.dump())
     return result, trace
