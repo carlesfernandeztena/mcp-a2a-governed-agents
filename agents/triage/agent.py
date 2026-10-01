@@ -116,8 +116,10 @@ def _context(calls: list[tuple[str, dict, dict]]) -> dict | None:
 def runtime_problems(draft: TriageDraft, calls: list[tuple[str, dict, dict]], serial: str | None) -> list[str]:
     """Grounding problems in a draft, judged only against records the skills returned in this run. Required
     citations follow from facts code already knows: fresh telemetry must be cited; samples at risk must cite the
-    manual's samples-at-risk section."""
+    manual's samples-at-risk section; a diagnosis must cite the manual section it comes from."""
     records, required = {}, []
+    if section := rules()["diagnosis"]["cause_sections"].get(draft.diagnosis.cause):
+        required.append(section)
     for name, args, r in calls:
         if name == "get_instrument_context" and "instrument" in r:
             records[r["instrument"]["id"]] = r["instrument"]
@@ -134,8 +136,7 @@ def runtime_problems(draft: TriageDraft, calls: list[tuple[str, dict, dict]], se
             elif r.get("reason") not in (None, "not_in_catalog"):  # a refused catalog part was still looked up
                 records[f"PRT-{args['part_number']}"] = {"refused": r["reason"]}
     found = problems([e.model_dump() for e in draft.evidence], records, serial, list(dict.fromkeys(required)))
-    if any("MAN-CX80-SAMPLES" in f for f in found) and "MAN-CX80-SAMPLES" not in records:
-        found.append("samples are at risk: call search_manuals('MAN-CX80-SAMPLES') and cite that section")
+    found += [f"call search_manuals('{m}') and cite that section" for m in required if f"must cite {m}" in found and m not in records]
     return found
 
 

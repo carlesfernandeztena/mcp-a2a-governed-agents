@@ -20,6 +20,11 @@ diagnosis:
   compressor_current_min_a: 5   # R-ORD-7: compressor signature
   recent_replacement_days: 90   # R-DGN-5 / R-ORD-6
   telemetry_stale_days: 2       # no reading newer than this → telemetry_missing
+  cause_sections:               # R-DGN-1..4: each diagnosis comes from one manual section, so it must cite it
+    condenser_filter_clogged: MAN-CX80-E21
+    door_ajar: MAN-CX80-E31
+    door_gasket_worn: MAN-CX80-E47
+    compressor_failing: MAN-CX80-E47
 
 ordering:
   max_qty_per_part: 1           # R-ORD-5
