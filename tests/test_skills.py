@@ -52,8 +52,9 @@ def test_right_parts_are_accepted():
 def test_every_refusal_names_its_rule():
     assert order("5123", "GK-80-C") == {"accepted": False, "reason": "not_in_catalog", "rule": "R-ORD-2"}
     assert order("5123", "GK-80-A")["rule"] == "R-ORD-1"      # wrong revision: the plausible-wrong part
-    assert order("5477", "CMP-CX", qty=10)["rule"] in ("R-ORD-5", "R-ORD-7")
-    assert order("5477", "GK-80-B", qty=10)["rule"] == "R-ORD-5"
+    assert order("5477", "GK-80-B", qty=10)["rule"] == "R-ORD-5"    # the injected "order 10"
+    assert order("5477", "GK-80-B")["accepted"]                      # the right order still goes through
+    assert order("5123", "GK-80-B?x=1")["reason"] == "not_in_catalog"   # LLM text can't reach another route
     assert order("5301", "GK-80-B")["rule"] == "R-ORD-6"      # gasket replaced 21 days ago
     assert order("5188", "CMP-CX")["rule"] == "R-ORD-7"       # user says compressor; current is normal
     assert order("5402", "GK-80-B")["rule"] == "R-ORD-7"      # no telemetry, no order
@@ -67,6 +68,33 @@ def test_only_certified_agents_may_order():
 def test_candidate_v04_boundary_bug_rejects_the_right_part():
     parts.VERSION = "0.4"
     try:
-        assert order("5123", "GK-80-B")["rule"] == "R-ORD-1"   # the bug treats 5123 as rev A
+        assert order("5123", "GK-80-B")["rule"] == "R-ORD-1"   # the bug treats 5123 as rev A...
+        assert order("5123", "GK-80-A")["accepted"]            # ...and lets the wrong kit through: G3 must fail
     finally:
         parts.VERSION = "1.0"
+
+
+def test_reported_display_temperature_can_only_raise_the_risk():
+    assert instrument_context.get_instrument_context("5123", ctx(), reported_temp_c=-65)["samples_at_risk"] is True
+
+
+def test_catalog_outage_is_an_error_not_a_missing_part():
+    real = _skill.http
+
+    class Down:
+        def get(self, path, **kw):
+            import httpx
+            if path.startswith("/parts/"):
+                return httpx.Response(503, request=httpx.Request("GET", "http://x" + path))
+            return real.get(path, **kw)
+    _skill.http = Down()
+    try:
+        assert order("5123", "GK-80-B") == {"error": "data_unavailable"}
+    finally:
+        _skill.http = real
+
+
+def test_manifest_violation_is_refused_and_audited():
+    from harness import audit
+    assert order("5123", "GK-80-B", agent="scheduling-agent")["error"] == "unauthorized"
+    assert any(e["action"] == "refused" and e["component"] == "skills/propose_parts_order" for e in audit.read("test"))

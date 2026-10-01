@@ -71,7 +71,7 @@ def verify(token: str) -> dict:
     if not PUBLIC.exists():
         raise PermissionError("issuer public key not found: badges cannot be verified")
     try:
-        return jwt.decode(token, PUBLIC.read_bytes(), algorithms=["RS256"], issuer=ISSUER,
+        return jwt.decode(token, PUBLIC.read_bytes(), algorithms=["RS256"], issuer=ISSUER, leeway=5,  # clock skew between containers
                           options={"require": ["exp", "iat", "iss", "sub"]})
     except jwt.PyJWTError as e:
         raise PermissionError(f"invalid badge: {e}") from e

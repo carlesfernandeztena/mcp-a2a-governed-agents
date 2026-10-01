@@ -69,7 +69,7 @@ Source of truth for the demo story, cast, and eval cases. The synthetic data is 
 - **R-DGN-4** E-47 + compressor running ~100% + abnormal current → **failing compressor**. *(L3-01)*
 - **R-DGN-5** A part replaced in the last 90 days is unlikely to be the cause → look at the other cause. Enforced in code by R-ORD-6. *(L3-01)*
 - **R-DGN-6** Missing telemetry → **don't guess**: escalate, no order, and sample risk is **unknown** (`samples_at_risk: null`): ask the customer to read the display temperature. *(L3-02)*
-- **R-DGN-7** Inside warmer than −70 °C → **samples at risk**: urgent visit + advise moving samples. Otherwise the visit is **routine**, even if the temperature is trending towards −70 °C. **Computed in code** from the latest telemetry (or a display temperature the engineer reports), never by the LLM. *(L3-01, L4-06)*
+- **R-DGN-7** Inside warmer than −70 °C → **samples at risk**: urgent visit + advise moving samples. Otherwise the visit is **routine**, even if the temperature is trending towards −70 °C. **Computed in code** from the latest telemetry or a display temperature the engineer reports — at risk if **either** is warmer than −70 °C (safety first) — never by the LLM. *(L3-01, L4-06)*
 
 ### Parts
 - **R-ORD-1** Gasket must match the revision: serial < 5000 → **80-A**, serial ≥ 5000 → **80-B**. *(L2-01, L2-02, L4-01, SC7)*
