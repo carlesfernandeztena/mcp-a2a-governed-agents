@@ -10,8 +10,8 @@ x-app: &app                      # our services share one image; each runs a dif
 services:
   gateway:                       # model gateway: the only place that knows about providers
     image: ghcr.io/berriai/litellm:main-stable
-    command: ["--config", "/app/litellm.yaml", "--port", "4000"]
-    volumes: ["./gateway/litellm.yaml:/app/litellm.yaml:ro"]
+    command: ["--config", "/app/gateway/litellm.yaml", "--port", "4000"]
+    volumes: ["./gateway:/app/gateway:ro"]   # the folder, not the file: editors that save by replacing the file would leave a file mount stale
     env_file: [{path: .env, required: false}]   # keys from .env; gateway is unauthenticated (local demo only)
     ports: ["127.0.0.1:4400:4000"]   # host port 4400: 4000 is often taken on Windows
 
