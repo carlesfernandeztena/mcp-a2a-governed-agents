@@ -23,7 +23,7 @@ def decide(proposal_id: str, user: str, approve: bool = True) -> dict:
     if badge["role"] != "service_manager":
         audit.write(trace, "approvals", "refused", badge, proposal_id=proposal_id, detail=f"{user} is {badge['role']}, approval needs service_manager")
         return {"refused": f"{user} is a {badge['role']}; only a service manager approves (R-ACC-2)"}
-    if any(e["action"] in ("approved", "rejected") for e in events):  # ponytail: read-then-write; a real store needs a transaction
+    if any(e["action"] in ("approved", "rejected") for e in events):  # simplification: read-then-write; a real store needs a transaction
         audit.write(trace, "approvals", "refused", badge, proposal_id=proposal_id, detail="already decided")
         return {"error": "already decided"}
     action = "approved" if approve else "rejected"

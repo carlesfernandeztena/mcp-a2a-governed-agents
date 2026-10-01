@@ -24,7 +24,7 @@ TTL = 3600
 
 def _private_key() -> bytes:
     """Only the issuer (minting side) may create keys; verifiers only ever read the public key."""
-    if not PRIVATE.exists():  # ponytail: generated on first mint, shared through a mounted folder
+    if not PRIVATE.exists():  # simplification: generated on first mint, shared through a mounted folder
         KEYS.mkdir(exist_ok=True)
         key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
         PRIVATE.write_bytes(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))

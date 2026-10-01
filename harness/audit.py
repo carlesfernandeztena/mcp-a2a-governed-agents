@@ -15,7 +15,7 @@ def new_trace() -> str:
 
 
 def write(trace: str, component: str, action: str, badge: dict | None = None, **detail) -> dict:
-    """ponytail: append-only local file; production = tamper-evident store with retention (PATH_TO_PRODUCTION).
+    """simplification: append-only local file; production = tamper-evident store with retention (PATH_TO_PRODUCTION).
     Identity fields come from the verified badge and are written last, so `detail` can never overwrite them."""
     act = (badge or {}).get("act") or {}
     event = {

@@ -4,6 +4,7 @@ x-app: &app                      # our services share one image; each runs a dif
   volumes:
     - ./.keys:/app/.keys         # stub issuer's key pair (never baked into the image)
     - ./audit:/app/audit         # one shared audit log
+    - ./evals/results:/app/evals/results   # eval result files survive the throwaway cli container
 
 services:
   gateway:                       # model gateway: the only place that knows about providers
@@ -11,24 +12,24 @@ services:
     command: ["--config", "/app/litellm.yaml", "--port", "4000"]
     volumes: ["./gateway/litellm.yaml:/app/litellm.yaml:ro"]
     env_file: [{path: .env, required: false}]   # keys from .env; gateway is unauthenticated (local demo only)
-    ports: ["4000:4000"]
+    ports: ["127.0.0.1:4400:4000"]   # host port 4400: 4000 is often taken on Windows
 
   dataproducts:                  # governed data: badge checked at the door
     <<: *app
     command: ["uvicorn", "dataproducts.app:app", "--host", "0.0.0.0", "--port", "8001"]
-    ports: ["8001:8001"]
+    ports: ["127.0.0.1:8001:8001"]
 
   skill-context:                 # MCP skill get_instrument_context (T2)
     <<: *app
     command: ["python", "-m", "skills.instrument_context"]
     environment: {DATA_URL: "http://dataproducts:8001"}
-    ports: ["8101:8101"]
+    ports: ["127.0.0.1:8101:8101"]
 
   skill-manuals:                 # MCP skill search_manuals (T1)
     <<: *app
     command: ["python", "-m", "skills.manuals"]
     environment: {DATA_URL: "http://dataproducts:8001"}
-    ports: ["8102:8102"]
+    ports: ["127.0.0.1:8102:8102"]
 
   cli:                           # docker compose run --rm cli python -m cli.ask "…"
     <<: *app
@@ -45,16 +46,16 @@ services:
     <<: *app
     command: ["python", "-m", "agents.scheduling.agent"]
     environment: {DATA_URL: "http://dataproducts:8001", SCHEDULING_PUBLIC_URL: "http://scheduling-agent:8201/"}
-    ports: ["8201:8201"]
+    ports: ["127.0.0.1:8201:8201"]
 
   skill-parts:                   # MCP skill propose_parts_order (T3)
     <<: *app
     command: ["python", "-m", "skills.parts"]
     environment: {DATA_URL: "http://dataproducts:8001"}
-    ports: ["8103:8103"]
+    ports: ["127.0.0.1:8103:8103"]
 
   skill-parts-rc:                # sandbox build of the same skill, v0.4 with the deliberate regression (SC7)
     <<: *app
     command: ["python", "-m", "skills.parts"]
     environment: {DATA_URL: "http://dataproducts:8001", PARTS_SKILL_VERSION: "0.4", PORT: "8113"}
-    ports: ["8113:8113"]
+    ports: ["127.0.0.1:8113:8113"]

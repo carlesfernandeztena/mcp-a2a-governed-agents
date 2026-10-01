@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 trap 'kill 0' EXIT
 
-[ "${NO_GATEWAY:-}" ] || uvx --env-file .env --from 'litellm[proxy]' litellm --config gateway/litellm.yaml --port 4000 &
+[ "${NO_GATEWAY:-}" ] || uvx --env-file .env --from 'litellm[proxy]' litellm --config gateway/litellm.yaml --port 4400 &
 uv run uvicorn dataproducts.app:app --port 8001 --log-level warning &
 uv run python -m skills.instrument_context &
 uv run python -m skills.manuals &

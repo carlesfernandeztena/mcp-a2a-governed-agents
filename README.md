@@ -1,6 +1,8 @@
 # mcp-a2a-governed-agents
 
-A small, working **governed agent plane**: an LLM agent that triages ultra-low freezer faults through **MCP skills**, hands off to another team's agent over **A2A**, talks to models only through a **vendor-neutral gateway**, and is wrapped by a **harness** that decides everything an LLM shouldn't — identity on behalf of a user, entitlements, risk-tier inheritance, evidence-gated actions, audit lineage, and **eval-gated promotion**.
+A small, working **governed agent plane**: an LLM agent that triages ultra-low freezer faults through **MCP** (Model Context Protocol) skills, hands off to another team's agent over **A2A** (the agent-to-agent protocol), talks to models only through a **vendor-neutral gateway**, and is wrapped by a **harness** that decides everything an LLM shouldn't — identity on behalf of a user, entitlements, risk-tier inheritance, evidence-gated actions, audit lineage, and **eval-gated promotion**.
+
+A *badge* below is a signed JWT carrying the user and the agent acting for them; *tiers* rate what a skill can do: T1 read manuals, T2 read customer data, T3 act (order, schedule), T4 regulated.
 
 The scenario is synthetic (fictional *Cryonix 80* freezers, customers and engineers), so the platform is the point.
 
@@ -23,7 +25,7 @@ flowchart LR
 | The LLM fills only judgement fields (`TriageDraft`); parts, prices, sample risk, urgency, status, visit and approval come from code | `harness/contract.py`, `agents/triage/agent.py` |
 | One badge — the **user** as subject, the **agent** as `act` (RFC 8693 style) — travels every hop: agent → skill → data product, agent → agent → data product | `harness/badges.py` |
 | Entitlements checked at the data product: territory, regulated records, registered agent | `harness/policy.py`, `dataproducts/app.py` |
-| A composition's tier = the highest tier it touches, computed from its manifest; an agent whose manifest outgrew its certification doesn't run | `harness/policy.py`, `harness/registry.yaml` |
+| A composition's tier = the highest tier it touches, computed from its manifest; an agent whose manifest outgrew its certification is denied at run start, and any call above its certified tier is refused | `harness/policy.py`, `harness/registry.yaml` |
 | Actions are gated by evidence: no compressor without a compressor signature, no re-order within 90 days, revision-checked kits, max 1 per part | `skills/parts.py` |
 | Every action leaves an audit line: who, on behalf of whom, which agent and version, what it saw (record ids + payload hash), which model, the decision, the approver | `harness/audit.py` |
 | Promotion follows from three exact gates on 29 cases (core + variations), never from judgement | `evals/` |
@@ -33,10 +35,12 @@ Every rule (`R-ACC-1`…`R-CRT-1`) is written in [docs/DEMO_SCENARIOS.md](docs/D
 
 ## Run it
 
+Needs Docker Compose ≥ 2.24 and an OpenAI API key. Scenes that ask the agent a question call the model (with `gpt-6-luna`, about $0.002 per question; a full eval run of 29 cases about $0.06).
+
 ```bash
 cp .env.example .env          # add OPENAI_API_KEY (and ANTHROPIC_API_KEY for the swap)
 docker compose up -d --build  # gateway, data products, 3 MCP skills, scheduling agent, sandbox skill build
-alias demo='docker compose run --rm cli python -m'
+alias demo='docker compose run --rm cli python -m'   # in your shell
 ```
 
 No Docker? `scripts/local.sh` runs every service as a local process (needs [uv](https://docs.astral.sh/uv/)), and the same commands work as `uv run python -m …`.
@@ -45,7 +49,7 @@ No Docker? `scripts/local.sh` runs every service as a local process (needs [uv](
 |---|---|
 | SC1 happy path (diagnosis → evidence-checked part → A2A visit → approval pending) | `demo cli.ask "Cryonix 80 SN 5123 at BarnaLabs, error E-47, temperature creeping up."` |
 | SC2 a skill on its own, over MCP, no LLM | `demo cli.skill propose_parts_order '{"serial": "5123", "part_number": "GK-80-A"}'` |
-| SC3 provider swap | edit the `model:` line under `triage-llm` in `gateway/litellm.yaml`, `docker compose restart gateway`, re-run SC1 |
+| SC3 provider swap | in `gateway/litellm.yaml` change the `model:` line under `triage-llm` to `anthropic/claude-sonnet-5-5`, `docker compose restart gateway`, re-run SC1 |
 | SC4 entitlement deny (territory) | `demo cli.ask "Faraway Pharma in Boston reports E-47 on SN 7001."` |
 | SC5 tier inheritance | `demo cli.view --registry` · `demo cli.ask --as consuelo --agent quick-lookup "Order a GasketKit 80-B for SN 5123"` |
 | SC6 audit card | `demo cli.view` (last question) · `demo cli.view <trace> --raw` |
@@ -55,7 +59,7 @@ No Docker? `scripts/local.sh` runs every service as a local process (needs [uv](
 
 ## Honest limits
 
-Two deliberate stubs, marked `# STUB:` in the code: the **identity provider** (badges are real signed JWTs, but minted locally) and **ERP submission** (an approved order is logged, not sent). Everything simplified or left out, and what production needs instead, is in [docs/PATH_TO_PRODUCTION.md](docs/PATH_TO_PRODUCTION.md).
+Local demo only: the gateway is unauthenticated, so ports are bound to `127.0.0.1`. Two deliberate stubs, marked `# STUB:` in the code: the **identity provider** (badges are real signed JWTs, but minted locally) and **ERP submission** (an approved order is logged, not sent). Everything simplified or left out, and what production needs instead, is in [docs/PATH_TO_PRODUCTION.md](docs/PATH_TO_PRODUCTION.md).
 
 ## Repo map
 
