@@ -64,17 +64,28 @@ NOT_MEASUREMENTS = re.compile(  # numbers in a claim that are not readings: date
 def numbers_match(ref: str, claim: str, cited: list[str] = (), serial: str | None = None) -> bool:
     """Telemetry claims must quote readings that exist in the telemetry the answer cites (the classic hallucination
     spot). A trend claim may combine days, so any cited telemetry record of the same freezer counts.
-    simplification: a number that happens to appear in another column of a cited day also passes; stricter = per-field matching."""
+    Numbers from cited manual sections also count (a reading compared with a threshold), but at least one number
+    must be a real reading, so a claim made only of manual numbers can't pose as telemetry.
+    simplification: numbers aren't tied to fields (a value from another column, or a manual threshold, passes);
+    stricter = per-field matching."""
     if not ref.startswith("TEL-"):
         return True
-    text = re.sub(r"(\d),(\d)", r"\1.\2", claim.replace("−", "-").replace("–", "-"))   # unicode minus, decimal commas
+    text = re.sub(r"(\d),(\d)", r"\1.\2", claim.replace("−", "-"))   # unicode minus, decimal commas
     if serial:
         text = re.sub(rf"\b{serial}\b", " ", text)
-    text = NOT_MEASUREMENTS.sub(" ", text)
+    text = _ranges(NOT_MEASUREMENTS.sub(" ", text))
     freezer = ref.rsplit("-", 3)[0]
-    values = [float(v) for r in {ref, *(c for c in cited if c.startswith(freezer + "-") and c in TELEMETRY)}
-              for v in TELEMETRY[r].values() if re.fullmatch(r"-?\d+(\.\d+)?", v)]
-    return all(any(abs(float(n) - v) <= 0.05 for v in values) for n in re.findall(r"-?\d+(?:\.\d+)?", text))
+    readings = [float(v) for r in {ref, *(c for c in cited if c.startswith(freezer + "-") and c in TELEMETRY)}
+                for v in TELEMETRY[r].values() if re.fullmatch(r"-?\d+(\.\d+)?", v)]
+    thresholds = [float(n) for c in cited if c in MANUAL for n in re.findall(r"-?\d+(?:\.\d+)?", _ranges(MANUAL[c].replace("−", "-")))]
+    numbers = [float(n) for n in re.findall(r"-?\d+(?:\.\d+)?", text)]
+    near = lambda n, vs: any(abs(n - v) <= 0.05 for v in vs)  # noqa: E731
+    return all(near(n, readings + thresholds) for n in numbers) and (not numbers or any(near(n, readings) for n in numbers))
+
+
+def _ranges(text: str) -> str:
+    """'3.8–4.8' / '3.8-4.8' are two numbers, not a minus sign."""
+    return re.sub(r"(\d)\s*[–-]\s*(\d)", r"\1 \2", text).replace("–", "-")
 
 
 def check(case: dict, result: dict) -> dict[str, list[str]]:
