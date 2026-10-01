@@ -1,5 +1,6 @@
 # The `demo` command with tab completion. Load it in each terminal:  source scripts/demo.sh
 # Runs on the host with uv, against the services from `docker compose up -d`.
+unalias demo 2>/dev/null   # an old `alias demo=…` would hijack the function below
 DEMO_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 demo() { uv run --quiet --directory "$DEMO_REPO" python -m cli "$@"; }
