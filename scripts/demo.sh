@@ -13,7 +13,7 @@ _demo() {
   serials=$(tail -n +2 "$DEMO_REPO/data/instruments.csv" | cut -d, -f2)
   parts=$(tail -n +2 "$DEMO_REPO/data/parts_catalog.csv" | cut -d, -f2)
   if [ "$n" -eq 1 ]; then
-    words="follow ask view approve skill registry eval promotions gateway stop start stubs who freezers"
+    words="follow ask view approve skill registry eval promotions gateway stop start stubs path who freezers"
   else
     case "$cmd" in
       ask)     [ "$n" -eq 2 ] && words="$people"   # then the question: free text in quotes (demo ask -h has examples)
