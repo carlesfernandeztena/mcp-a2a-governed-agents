@@ -52,12 +52,15 @@ def test_runtime_grounding_checks_only_what_this_run_saw():
     tel = {"id": "TEL-5123-2026-10-01", "instrument": "INS-5123", "cabinet_temp_c": -74.0, "recovery_min": 45}
     ctx = ("get_instrument_context", {"serial": "5123"}, {"instrument": {"id": "INS-5123"}, "service_records": [], "telemetry": [tel],
                                                           "latest_telemetry": tel, "samples_at_risk": False, "flags": []})
-    good = draft()                                                       # cites TEL-5123-2026-10-01 "-74.0 °C"
-    assert runtime_problems(good, [ctx], "5123") == []
+    manual = ("search_manuals", {"query": "E-47"}, {"sections": [{"id": "MAN-CX80-E47", "title": "E-47", "text": "creep"}]})
+    tel_only = draft()                                                   # cites TEL-5123-2026-10-01 "-74.0 °C"
+    assert runtime_problems(tel_only, [ctx], "5123") == ["must cite MAN-CX80-E47", "call search_manuals('MAN-CX80-E47') and cite that section"]
+    good = TriageDraft.model_validate(tel_only.model_dump() | {"evidence": [*tel_only.model_dump()["evidence"], {"ref": "MAN-CX80-E47", "claim": "gasket signs"}]})
+    assert runtime_problems(good, [ctx, manual], "5123") == []          # the diagnosis cites the section it comes from
     unseen = TriageDraft.model_validate(good.model_dump() | {"evidence": [*good.model_dump()["evidence"], {"ref": "SRV-0142", "claim": "gasket fitted"}]})
-    assert any("SRV-0142: no such record" in p for p in runtime_problems(unseen, [ctx], "5123"))
+    assert any("SRV-0142: no such record" in p for p in runtime_problems(unseen, [ctx, manual], "5123"))
     risky = ("get_instrument_context", {}, {**ctx[2], "samples_at_risk": True})
-    found = runtime_problems(good, [risky], "5123")
+    found = runtime_problems(good, [risky, manual], "5123")
     assert "must cite MAN-CX80-SAMPLES" in found and any("search_manuals('MAN-CX80-SAMPLES')" in p for p in found)
 
 
