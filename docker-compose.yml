@@ -32,7 +32,7 @@ services:
     environment: {DATA_URL: "http://dataproducts:8001"}
     ports: ["127.0.0.1:8102:8102"]
 
-  cli:                           # docker compose run --rm cli python -m cli.ask "…"
+  cli:                           # docker compose run --rm cli python -m cli ask yusuf "…"
     <<: *app
     profiles: [cli]
     depends_on: [gateway, skill-context, skill-manuals, skill-parts]

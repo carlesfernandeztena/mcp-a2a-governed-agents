@@ -174,7 +174,8 @@ def cmd_eval(a) -> None:
         log.parent.mkdir(exist_ok=True)
         with open(log, "w") as out:   # the gate run keeps going after this command returns
             subprocess.Popen([sys.executable, "-m", "cli", "eval", a.which], cwd=ROOT, stdout=out, stderr=subprocess.STDOUT, start_new_session=True)
-        print(f"eval {a.which} running in the background (~2 min). The live stream shows the decision; then: demo eval last")
+        took = "~2 min" if a.which == "rc" else "~4 min"
+        print(f"eval {a.which} running in the background ({took}). The live stream shows the decision; then: demo eval last")
         return
     if a.which == "rc":   # the sandbox build of the parts skill, before the agent module reads its URLs
         os.environ["SKILL_PARTS_URL"] = os.environ.get("SKILL_PARTS_RC_URL", "http://localhost:8113/mcp")
@@ -211,7 +212,7 @@ def main() -> None:
     s = sub.add_parser("ask", help="ask the triage agent", formatter_class=raw,
                        description="Ask the triage agent a question, as one of the people. Consuelo asks through her own agent.",
                        epilog=f"{who_text()}\n\n{freezers_text()}\n\n{examples_text()}")
-    s.add_argument("who", nargs="?", choices=people, metavar="who", help=f"who asks: {', '.join(people)}")
+    s.add_argument("who", nargs="?", type=str.lower, choices=people, metavar="who", help=f"who asks: {', '.join(people)}")
     s.add_argument("question", nargs="?", help="free text, in quotes")
     s.add_argument("--agent", choices=["triage-agent", "quick-lookup"], help="override the person's usual agent")
     s.set_defaults(run=cmd_ask, parser=s)
@@ -230,7 +231,7 @@ def main() -> None:
     s = sub.add_parser("approve", help="approve the last proposal", formatter_class=raw,
                        description="Approve the last parts proposal as a person. Only a service manager may (R-ACC-2); every attempt is audited.",
                        epilog="  demo approve yusuf     → refused: field engineers propose, they don't approve\n  demo approve grant     → approved, ERP submission stubbed")
-    s.add_argument("who", nargs="?", choices=people, metavar="who", help=f"who approves: {', '.join(people)} (grant is the service manager)")
+    s.add_argument("who", nargs="?", type=str.lower, choices=people, metavar="who", help=f"who approves: {', '.join(people)} (grant is the service manager)")
     s.add_argument("--proposal", help="a proposal id (default: the last one proposed)")
     s.add_argument("--reject", action="store_true", help="reject instead of approve")
     s.set_defaults(run=cmd_approve, parser=s)
@@ -248,7 +249,7 @@ def main() -> None:
         x = ss.add_parser(name, help={"manuals": "search_manuals (T1)", "context": "get_instrument_context (T2)", "order": "propose_parts_order (T3)"}[name])
         for arg in args:
             x.add_argument(arg, help={"query": "search text, e.g. \"E-47\"", "serial": "freezer serial, e.g. 5123", "part": "part number, e.g. GK-80-B"}[arg])
-        x.add_argument("--as", dest="who", default="yusuf", choices=people, metavar="who", help="whose badge (default yusuf)")
+        x.add_argument("--as", dest="who", default="yusuf", type=str.lower, choices=people, metavar="who", help="whose badge (default yusuf)")
         x.set_defaults(run=cmd_skill, parser=s, query=None, serial=None, part=None)
 
     s = sub.add_parser("registry", help="computed vs certified tier", description="Agents: manifest, computed tier vs certified tier (R-RSK-1).")
@@ -281,8 +282,8 @@ def main() -> None:
         s.add_argument("service", choices=SERVICES, metavar="service", help=" | ".join(SERVICES))
         s.set_defaults(run=lambda a: _docker(a.command, a.service))
 
-    s = sub.add_parser("stubs", help="the two stubs", description="The two deliberate stubs, marked # STUB: in the code.")
-    s.set_defaults(run=lambda a: subprocess.run(["grep", "-rnI", "-A2", "--include=*.py", "# STUB:", "harness", "cli"], cwd=ROOT, check=False))
+    s = sub.add_parser("stubs", help="the two stubs", description="The two deliberate stubs, marked with a STUB comment in the code.")
+    s.set_defaults(run=lambda a: subprocess.run(["grep", "-rnI", "-A2", "--include=*.py", "# STUB[:]", "harness", "cli"], cwd=ROOT, check=False))
 
     sub.add_parser("who", help="people and agents").set_defaults(run=lambda a: print(who_text()))
     sub.add_parser("freezers", help="the installed base").set_defaults(run=lambda a: print(f"{freezers_text()}\n\n{parts_text()}"))
@@ -291,8 +292,6 @@ def main() -> None:
         print(overview())
         return
     a = p.parse_args()
-    if getattr(a, "who", None):
-        a.who = a.who.lower()
     try:
         a.run(a)
     except KeyboardInterrupt:

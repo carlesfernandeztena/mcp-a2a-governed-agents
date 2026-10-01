@@ -17,7 +17,7 @@ _demo() {
     case "$cmd" in
       ask)     [ "$n" -eq 2 ] && words="$people"   # then the question: free text in quotes (demo ask -h has examples)
                [ "${COMP_WORDS[n-1]}" = "--agent" ] && words="triage-agent quick-lookup" ;;
-      approve) [ "$n" -eq 2 ] && words="$people" || words="--reject --proposal" ;;
+      approve) words="$people --reject --proposal" ;;
       skill)   case "$n:${COMP_WORDS[2]}" in
                  2:*) words="manuals context order" ;;
                  3:context|3:order) words="$serials" ;;
@@ -25,7 +25,8 @@ _demo() {
                  *) words="--as" ;;
                esac ;;
       eval)    words="current rc last --background" ;;
-      gateway) [ "$n" -eq 2 ] && words="use restart" || words="luna sonnet haiku" ;;
+      gateway) [ "$n" -eq 2 ] && words="use restart"
+               [ "${COMP_WORDS[2]}" = "use" ] && [ "$n" -eq 3 ] && words="luna sonnet haiku" ;;
       stop|start) words="scheduling-agent skill-context skill-manuals skill-parts dataproducts gateway" ;;
       view)    words="--raw" ;;
     esac
