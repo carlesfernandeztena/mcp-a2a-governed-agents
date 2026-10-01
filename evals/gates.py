@@ -64,7 +64,7 @@ NOT_MEASUREMENTS = re.compile(  # numbers in a claim that are not readings: date
 def numbers_match(ref: str, claim: str, cited: list[str] = (), serial: str | None = None) -> bool:
     """Telemetry claims must quote readings that exist in the telemetry the answer cites (the classic hallucination
     spot). A trend claim may combine days, so any cited telemetry record of the same freezer counts.
-    ponytail: a number that happens to appear in another column of a cited day also passes; stricter = per-field matching."""
+    simplification: a number that happens to appear in another column of a cited day also passes; stricter = per-field matching."""
     if not ref.startswith("TEL-"):
         return True
     text = re.sub(r"(\d),(\d)", r"\1.\2", claim.replace("−", "-").replace("–", "-"))   # unicode minus, decimal commas

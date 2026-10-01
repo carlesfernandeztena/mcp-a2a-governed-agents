@@ -5,7 +5,7 @@ Feeds the "where I am least sure" and "year one" discussion.
 
 Four groups:
 1. **Faked on purpose** (the two declared stubs, marked `# STUB:` in the code)
-2. **Made simpler** (works for real, but a smaller version; marked `ponytail:` in the code)
+2. **Made simpler** (works for real, but a smaller version; marked `simplification:` in the code)
 3. **Made up** (synthetic data and services, as the brief allows)
 4. **Not built at all**
 

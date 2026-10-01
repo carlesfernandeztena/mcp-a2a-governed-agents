@@ -33,7 +33,7 @@ from harness.policy import computed_tier
 from harness.contract import serial_of
 from harness.rules import rules
 
-GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://localhost:4000")
+GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://localhost:4400")
 SKILL_URLS = {
     "get_instrument_context": os.environ.get("SKILL_CONTEXT_URL", "http://localhost:8101/mcp"),
     "search_manuals": os.environ.get("SKILL_MANUALS_URL", "http://localhost:8102/mcp"),
