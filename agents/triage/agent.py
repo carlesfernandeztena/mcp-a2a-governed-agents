@@ -126,7 +126,7 @@ def assemble(draft: TriageDraft | None, calls: list[tuple[str, dict, dict]], sto
     # any accepted part means the case needs a human (R-DGN-6).
     if parts:
         status = "proposal"
-    elif draft.status == "proposal" or "telemetry_missing" in flags:
+    elif draft.status == "proposal" or {"telemetry_missing", "reported_reading_conflicts"} & set(flags):
         status = "escalate"
     else:
         status = draft.status

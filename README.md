@@ -28,14 +28,14 @@ flowchart LR
 | A composition's tier = the highest tier it touches, computed from its manifest; an agent whose manifest outgrew its certification is denied at run start, and any call above its certified tier is refused | `harness/policy.py`, `harness/registry.yaml` |
 | Actions are gated by evidence: no compressor without a compressor signature, no re-order within 90 days, revision-checked kits, max 1 per part | `skills/parts.py` |
 | Every action leaves an audit line: who, on behalf of whom, which agent and version, what it saw (record ids + payload hash), which model, the decision, the approver | `harness/audit.py` |
-| Promotion follows from three exact gates on 29 cases (core + variations), never from judgement | `evals/` |
+| Promotion follows from three exact gates on 30 cases (core + variations), never from judgement | `evals/` |
 | Swapping the model provider is one line in the gateway config | `gateway/litellm.yaml` |
 
 Every rule (`R-ACC-1`…`R-CRT-1`) is written in [docs/DEMO_SCENARIOS.md](docs/DEMO_SCENARIOS.md) and every number it uses lives in [rules.yaml](rules.yaml).
 
 ## Run it
 
-Needs Docker Compose ≥ 2.24 and an OpenAI API key. Scenes that ask the agent a question call the model (with `gpt-6-luna`, about $0.002 per question; a full eval run of 29 cases about $0.06).
+Needs Docker Compose ≥ 2.24 and an OpenAI API key. Scenes that ask the agent a question call the model (with `gpt-6-luna`, about $0.002 per question; a full eval run of 30 cases about $0.06).
 
 ```bash
 cp .env.example .env          # add OPENAI_API_KEY (and ANTHROPIC_API_KEY for the swap)
