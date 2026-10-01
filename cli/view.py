@@ -5,9 +5,11 @@
     uv run python -m cli.view --promotions   # promotion decisions from the eval gates
     uv run python -m cli.view --registry     # manifests, computed vs certified tier (who may run)
     uv run python -m cli.view <trace> --raw  # every audit line, unfiltered
+    uv run python -m cli.view --follow       # live: one colored line per event as it happens (eval traffic folded)
 """
 import argparse
 import json
+import time
 from collections import defaultdict
 
 from rich.console import Console
@@ -22,7 +24,7 @@ from harness.policy import computed_tier, skill_tier
 console = Console()
 COLOR = {"denied": "bold red", "refused": "yellow", "failed": "bold red", "proposed": "green", "proposed_visit": "green",
          "approved": "bold green", "rejected": "bold red", "submission_stubbed": "magenta", "not_found": "yellow",
-         "answered": "cyan", "question": "bold"}
+         "answered": "cyan", "question": "bold", "served": "green"}
 
 
 def model_of(e: dict) -> str:
@@ -117,6 +119,52 @@ def card(events: list[dict]) -> Panel:
     return Panel(table, title="Audit card", expand=False)
 
 
+def live(e: dict, evals: set) -> None:
+    """One event of the live stream. Eval runs are folded: their 30 cases stay quiet, their promotion line shows."""
+    if e["action"] == "question" and e.get("eval_case"):
+        evals.add(e["trace"])
+    if e["trace"] in evals:
+        return
+    if e["action"] == "question":
+        console.rule(f"[dim]trace {escape(e['trace'])}[/]")
+    if e["action"] == "read":
+        recs = defaultdict(list)
+        for r in e.get("records", []):
+            recs[r.split("-")[0]].append(r)
+        text = "[dim]" + escape(f"{e['component']} → " + "  ".join(" ".join(v) if len(v) <= 3 else f"{k} ×{len(v)}" for k, v in recs.items())) + "[/]"
+    elif e["action"] == "promotion":
+        ok = e["decision"] == "certified"
+        gates = "  ".join(f"{g} {'PASS' if not r['failed'] else 'FAIL ' + str(len(r['failed']))}" for g, r in e.get("gates", {}).items())
+        text = f"[{'bold green' if ok else 'bold red'}]evals → {'CERTIFIED' if ok else 'BLOCKED'}: {escape(e['candidate'])} · {escape(gates)}[/]"
+    else:
+        text = f"[{COLOR.get(e['action'], 'white')}]{line(e)}[/]"
+    console.print(f"[dim]{escape(e['ts'][11:19])}[/] {text}")
+    for fix in e.get("self_corrections") or []:
+        console.print(f"[yellow]         self-corrected: {escape('; '.join(fix))[:150]}[/]")
+
+
+def follow(poll: float = 0.3) -> None:
+    """Tail the audit log from now on. Bytes, not text, so a half-written line from another container waits for its end."""
+    pos, buf, evals = audit.LOG.stat().st_size if audit.LOG.exists() else 0, b"", set()
+    console.print("[dim]live audit stream: waiting for events (Ctrl+C to stop)[/]")
+    while True:
+        size = audit.LOG.stat().st_size if audit.LOG.exists() else 0
+        if size < pos:  # log rotated or cleared
+            pos, buf = 0, b""
+        if size > pos:
+            with open(audit.LOG, "rb") as f:
+                f.seek(pos)
+                buf += f.read()
+                pos = f.tell()
+            *lines, buf = buf.split(b"\n")
+            for raw in lines:
+                try:
+                    live(json.loads(raw), evals)
+                except (json.JSONDecodeError, KeyError):
+                    continue
+        time.sleep(poll)
+
+
 def registry() -> None:
     """SC5: each agent's manifest, the tier computed from it (R-RSK-1), the tier it is certified for, and whether it runs."""
     table = Table(title="Registry: computed vs certified tier (R-RSK-1)")
@@ -149,8 +197,14 @@ if __name__ == "__main__":
     p.add_argument("--promotions", action="store_true")
     p.add_argument("--registry", action="store_true")
     p.add_argument("--raw", action="store_true")
+    p.add_argument("--follow", action="store_true")
     a = p.parse_args()
-    if a.promotions:
+    if a.follow:
+        try:
+            follow()
+        except KeyboardInterrupt:
+            pass
+    elif a.promotions:
         promotions()
     elif a.registry:
         registry()

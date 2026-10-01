@@ -47,6 +47,7 @@ No Docker? `scripts/local.sh` runs every service as a local process (needs [uv](
 
 | Scene | Command |
 |---|---|
+| Live audit stream (keep it open in a second terminal) | `demo cli.view --follow`: one colored line per event as it happens; eval runs are folded into their promotion line |
 | SC1 happy path (diagnosis → evidence-checked part → A2A visit → approval pending) | `demo cli.ask "Cryonix 80 SN 5123 at BarnaLabs, error E-47, temperature creeping up."` |
 | SC2 a skill on its own, over MCP, no LLM | `demo cli.skill propose_parts_order '{"serial": "5123", "part_number": "GK-80-A"}'` |
 | SC3 provider swap | in `gateway/litellm.yaml` change the `model:` line under `triage-llm` to `anthropic/claude-sonnet-5-5`, `docker compose restart gateway`, re-run SC1 |
