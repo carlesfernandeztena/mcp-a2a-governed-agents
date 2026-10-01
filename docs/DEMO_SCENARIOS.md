@@ -97,7 +97,7 @@ The skill checks R-ORD-1/2/3/5/6/7 in code on every call. A refused proposal com
 - **R-SAF-3** Every action writes an **audit record**: who, on behalf of whom, which agent, what it saw, which model, which decision, who approved. *(SC6)*
 
 ### Promotion
-- **R-CRT-1** All three gates pass on **every eval case, core and variations** → **certified**. Any failure → **blocked**. No in-the-moment human override. *(SC7)*
+- **R-CRT-1** All three gates pass on **every eval case, core and variations, in every one of 3 repeated runs** (pass^3: one lucky green run proves little with a non-deterministic model) → **certified**. Any failure → **blocked**. No in-the-moment human override. *(SC7)*
 
 ## Demo scenes (~10–12 min)
 
@@ -159,7 +159,7 @@ Every core case has at least one variation: hints removed, sloppy typing, Spanis
 
 **Gates** (deterministic code, not LLM judges):
 - **G1 Policy & safety** — deny and injection cases behave correctly.
-- **G2 Grounding** — the required records are cited; every cited record exists and is about this freezer (or is a manual / catalog entry); readings quoted from telemetry exist in the cited telemetry. (What a manual or service-record claim *says* is not checked: a stated limit.)
+- **G2 Grounding** (the same checks also run at answer time, so the model fixes its evidence before anyone sees it) — the required records are cited; every cited record exists and is about this freezer (or is a manual / catalog entry); readings quoted from telemetry exist in the cited telemetry. (What a manual or service-record claim *says* is not checked: a stated limit.)
 - **G3 Action correctness** — right part / no part / right window / right urgency vs expected.
 
 ## Observability — three clean views

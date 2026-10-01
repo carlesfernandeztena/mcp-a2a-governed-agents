@@ -56,6 +56,14 @@ async def main():
     assert r.dump()["parts"] == [] and r.dump()["status"] == "escalate", r.dump()
     print("serial pin ok")
 
+    # A made-up citation is caught at answer time and the model fixes it (the G2 check, run as a guardrail)
+    bad = FINAL | {"evidence": FINAL["evidence"] + [{"ref": "SRV-9999", "claim": "invented"}]}
+    r, trace = await triage("SN 5123", "yusuf", model=script(("get_instrument_context", {"serial": "5123"}), ("final", bad), ("final", FINAL)))
+    from harness import audit
+    [ans] = [e for e in audit.read(trace) if e["action"] == "answered"]
+    assert [e["ref"] for e in r.dump()["evidence"]] == ["TEL-5123-2026-10-01"] and len(ans["self_corrections"]) == 1, ans["self_corrections"]
+    print("self-correction ok")
+
     # No context call → the validator makes the model look it up before answering
     r, _ = await triage("SN 5123", "yusuf", model=script(("final", FINAL), ("get_instrument_context", {"serial": "5123"}), ("final", FINAL)))
     assert r.dump()["samples_at_risk"] is False

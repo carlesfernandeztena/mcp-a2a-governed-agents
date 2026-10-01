@@ -4,7 +4,7 @@
     SKILL_PARTS_URL=http://localhost:8113/mcp uv run python -m evals.run --candidate "1.1-rc (parts skill 0.4)"
 
 The decision follows from the results, never from judgement in the moment: all gates pass on every case,
-core and variations → CERTIFIED; anything else → BLOCKED.
+core and variations, in every one of --repeat runs (pass^k, default 3) → CERTIFIED; anything else → BLOCKED.
 """
 import argparse
 import asyncio
@@ -54,20 +54,31 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--candidate", default="triage-agent 1.0", help="label of the build under evaluation")
     p.add_argument("--only", nargs="*", help="run a subset of case ids (exploration only: no promotion decision)")
+    p.add_argument("--repeat", type=int, default=3, help="full runs; certification needs every run green (pass^k)")
     a = p.parse_args()
     cases = [c for c in CASES if not a.only or c["id"] in a.only]
     start = time.time()
     build = {"skills": SKILL_URLS, "scheduling": SCHEDULING_URL, "gateway": GATEWAY_URL,
              "triage_llm": asyncio.run(gateway_route("triage-llm"))}   # what actually ran, not just a label
-    results = asyncio.run(run_all(cases))
     out = ROOT / "evals" / "results" / f"{time.strftime('%Y%m%dT%H%M%S')}.json"
     out.parent.mkdir(exist_ok=True)
-    out.write_text(json.dumps({"candidate": a.candidate, "build": build, "results": results}, indent=1, ensure_ascii=False))  # raw first
-    gates = gate_results(cases, results)
-    decision = "certified" if not a.only and all(not g["failed"] for g in gates.values()) else "blocked"
-    out.write_text(json.dumps({"candidate": a.candidate, "build": build, "decision": decision, "gates": gates, "results": results}, indent=1, ensure_ascii=False))
+    runs = []
+    for k in range(a.repeat):  # a non-deterministic model needs repeated evidence, not one lucky green run
+        results = asyncio.run(run_all(cases))
+        runs.append({"results": results, "gates": gate_results(cases, results)})
+        out.write_text(json.dumps({"candidate": a.candidate, "build": build, "runs": runs}, indent=1, ensure_ascii=False))  # raw as we go
+    passes = {c["id"]: sum(not any(c["id"] in g["failed"] for g in run["gates"].values()) for run in runs) for c in cases}
+    unstable = {cid: f"{n}/{a.repeat}" for cid, n in passes.items() if n < a.repeat}
+    gates = {g: {"cases": runs[0]["gates"][g]["cases"], "failed": {cid: r for run in runs for cid, r in run["gates"][g]["failed"].items()}}
+             for g in ("G1", "G2", "G3")}   # union of failures across runs
+    decision = "certified" if not a.only and not unstable else "blocked"
+    out.write_text(json.dumps({"candidate": a.candidate, "build": build, "repeat": a.repeat, "decision": decision,
+                               "pass_rate": passes, "gates": gates, "runs": runs}, indent=1, ensure_ascii=False))
     if not a.only:
-        audit.write(audit.new_trace(), "evals", "promotion", None, candidate=a.candidate, build=build, decision=decision,
-                    gates={g: {"cases": r["cases"], "failed": sorted(r["failed"])} for g, r in gates.items()}, results_file=out.name)
-    show(gates, decision if not a.only else "blocked (subset run, no decision)", a.candidate, time.time() - start)
+        audit.write(audit.new_trace(), "evals", "promotion", None, candidate=a.candidate, build=build, decision=decision, repeat=a.repeat,
+                    unstable=unstable, gates={g: {"cases": r["cases"], "failed": sorted(r["failed"])} for g, r in gates.items()},
+                    results_file=out.name)
+    show(gates, decision if not a.only else "blocked (subset run, no decision)", f"{a.candidate} · pass^{a.repeat}", time.time() - start)
+    if unstable:
+        print("Unstable cases (passed / runs):", ", ".join(f"{cid} {r}" for cid, r in unstable.items()))
     print(f"details: {out.relative_to(ROOT)}")

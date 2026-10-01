@@ -28,6 +28,7 @@ Four groups:
 | Consuelo's agent is a small file listing the skills she picked | A self-service screen to build agents from certified pieces | Same reason |
 | The list of skills and agents (with tier and status) is a file | A registry service that tracks versions, owners, tiers and certification | One team, a few entries |
 | The audit log is a local file | Tamper-proof storage, kept for a defined period, with access control | Shows *what* is recorded; *where* is an infrastructure choice |
+| Telemetry claims are checked by finding their numbers in the cited records (prose parsing) | Structured citations (`ref` + `field` + `value`), checked field by field: removes a whole class of grader false positives found during the eval runs | Works for the demo; every grader false positive got a regression test |
 | All gates are exact code checks | Add checks by an AI judge and by humans (sampled) for open-ended answers; red-team testing | The critical checks must be exact anyway |
 | We run the evals by hand | Gates run automatically on every change, and results update the registry | Same checks, different trigger |
 
