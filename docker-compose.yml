@@ -1,6 +1,7 @@
 # One command: docker compose up
 x-app: &app                      # our services share one image; each runs a different command
   build: .
+  image: governed-agents:local   # one tag for every service, incl. the cli profile, so one build updates them all
   volumes:
     - ./.keys:/app/.keys         # stub issuer's key pair (never baked into the image)
     - ./audit:/app/audit         # one shared audit log
