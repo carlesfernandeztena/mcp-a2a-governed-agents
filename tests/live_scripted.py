@@ -28,7 +28,19 @@ async def main():
     r, trace = await triage("SN 5123 E-47", "yusuf", model=sc1)
     d = r.dump()
     assert [p["part_number"] for p in d["parts"]] == ["GK-80-B"] and d["approval"]["state"] == "pending" and d["urgency"] == "routine", d
-    print("SC1 ok", trace)
+    assert (d["visit"]["engineer"], d["visit"]["start"], d["visit"]["within_sla"]) == ("mariona", "2026-10-05T14:00:00+02:00", True), d
+    print("SC1 ok (visit over A2A)", trace)
+
+    # SC8: the scheduling agent is down → the proposal stands, without a visit, flagged
+    import agents.triage.agent as triage_module
+    real, triage_module.SCHEDULING_URL = triage_module.SCHEDULING_URL, "http://localhost:8299/"
+    try:
+        r, _ = await triage("SN 5123 E-47", "yusuf", model=script(("get_instrument_context", {"serial": "5123"}),
+                                                                   ("propose_parts_order", {"serial": "5123", "part_number": "GK-80-B"}), ("final", FINAL)))
+    finally:
+        triage_module.SCHEDULING_URL = real
+    assert "visit" not in r.dump() and r.dump()["flags"] == ["scheduling_unavailable"] and r.dump()["status"] == "proposal", r.dump()
+    print("SC8 scheduling down ok")
 
     r, _ = await triage("SN 7001", "yusuf", model=script(("get_instrument_context", {"serial": "7001"}), ("final", FINAL)))
     assert r.dump()["status"] == "denied" and r.dump()["denial"]["reason"] == "territory"

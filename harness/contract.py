@@ -5,9 +5,15 @@ Optional fields default to None but are NOT typed `| None`: Pydantic doesn't val
 can be absent, yet setting it to None explicitly is rejected. Only `samples_at_risk` may be null (unknown).
 Results are dumped with `exclude_unset`.
 """
+import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
+
+
+def serial_of(value) -> str:
+    """Engineers write 'SN 5123'; records say '5123'. Strip the label only — never 'correct' the number."""
+    return re.sub(r"^\s*(?:SN|S/N|serial(?: number)?)\s*[:#]?\s*", "", str(value), flags=re.I).strip()
 
 Cause = Literal["door_gasket_worn", "compressor_failing", "condenser_filter_clogged", "door_ajar", "unknown"]
 Flag = Literal["chargeable_needs_po", "sla_breach", "scheduling_unavailable", "telemetry_missing",
@@ -81,10 +87,3 @@ class TriageResult(_Model):
     denial: Denial = None
 
 
-class ScheduleRequest(_Model):
-    """A2A handoff triage-agent → scheduling-agent. Who asks travels in the badge, not here."""
-    serial: str
-    site: str
-    country: str
-    contract_tier: Literal["gold", "silver", "none"]
-    urgency: Literal["routine", "urgent"]

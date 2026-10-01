@@ -13,8 +13,12 @@ import os
 from pathlib import Path
 
 import httpx
+from a2a.client import ClientConfig, ClientFactory
+from a2a.helpers.proto_helpers import get_data_parts, new_data_message
+from a2a.types.a2a_pb2 import Role, SendMessageRequest
 from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
+from pydantic import ValidationError
 from pydantic_ai import Agent, ModelRetry, capture_run_messages
 from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.messages import ModelResponse
@@ -24,8 +28,9 @@ from pydantic_ai.providers.litellm import LiteLLMProvider
 from pydantic_ai.usage import UsageLimits
 
 from harness import audit, badges
-from harness.contract import Approval, Denial, Diagnosis, Part, TriageDraft, TriageResult
+from harness.contract import Approval, Denial, Diagnosis, Part, TriageDraft, TriageResult, Visit
 from harness.policy import computed_tier
+from harness.contract import serial_of
 from harness.rules import rules
 
 GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://localhost:4000")
@@ -34,6 +39,7 @@ SKILL_URLS = {
     "search_manuals": os.environ.get("SKILL_MANUALS_URL", "http://localhost:8102/mcp"),
     "propose_parts_order": os.environ.get("SKILL_PARTS_URL", "http://localhost:8103/mcp"),
 }
+SCHEDULING_URL = os.environ.get("SCHEDULING_URL", "http://localhost:8201/")
 PROMPT = (Path(__file__).parent / "prompt.md").read_text(encoding="utf-8").replace("{today}", rules()["today"])
 LIMITS = UsageLimits(request_limit=10)  # cost cap per question
 
@@ -48,6 +54,34 @@ class Stop(Exception):
 def gateway_model(alias: str = "triage-llm") -> Model:
     """Agents only ever know the gateway alias; which provider serves it is the gateway's business."""
     return OpenAIChatModel(alias, provider=LiteLLMProvider(api_base=GATEWAY_URL))
+
+
+async def schedule(headers: dict, serial: str, urgency: str) -> dict:
+    """A2A handoff to Field Ops' scheduling-agent, carrying the same badge. Returns its answer, or an error."""
+    try:
+        async with httpx.AsyncClient(headers=headers, timeout=10) as http:
+            client = await ClientFactory(ClientConfig(httpx_client=http, streaming=False)).create_from_url(SCHEDULING_URL)
+            request = SendMessageRequest(message=new_data_message({"serial": serial, "urgency": urgency}, role=Role.ROLE_USER))
+            async for event in client.send_message(request):
+                if event.HasField("message"):
+                    return get_data_parts(event.message.parts)[0]
+    except Exception as e:  # unreachable, refused, malformed: the proposal still stands, flagged
+        return {"error": type(e).__name__}
+    return {"error": "no answer"}
+
+
+def add_visit(result: TriageResult, answer: dict) -> TriageResult:
+    """R-SCH-3: an unmet SLA is flagged; an unreachable scheduler leaves no visit and flags it."""
+    flags = list(result.flags or [])
+    fields = result.dump() | {"flags": flags}
+    try:  # another team's agent: never trust the shape of its answer
+        fields["visit"] = Visit(**answer["visit"])
+        if answer["visit"].get("within_sla") is False:
+            flags.append("sla_breach")
+    except (KeyError, TypeError, ValidationError):
+        fields.pop("visit", None)
+        flags.append("scheduling_unavailable")
+    return TriageResult.model_validate(fields)
 
 
 async def gateway_route(alias: str) -> str | None:
@@ -128,8 +162,9 @@ async def triage(question: str, user: str, agent_id: str = "triage-agent", model
     async def watch(ctx, call_tool, name, args):
         serial = args.get("serial")
         if serial is not None:
-            pinned.setdefault("serial", str(serial))
-            if str(serial) != pinned["serial"]:
+            serial = serial_of(serial)
+            pinned.setdefault("serial", serial)
+            if serial != pinned["serial"]:
                 return {"error": "serial_mismatch", "detail": f"this run is about SN {pinned['serial']}; ask a new question for another freezer"}
         result = _as_dict(await call_tool(name, args))
         calls.append((name, args, result))
@@ -158,8 +193,12 @@ async def triage(question: str, user: str, agent_id: str = "triage-agent", model
             raise
     responses = [m for m in messages if isinstance(m, ModelResponse)]
     result = assemble(draft, calls, stop)
+    scheduling = None
+    if result.parts:  # a visit is proposed by Field Ops' agent over A2A — code decides when, never the LLM
+        scheduling = await schedule(headers, pinned["serial"], result.urgency)
+        result = add_visit(result, scheduling)
     audit.write(trace, "triage-agent", "answered", badge, model_alias=alias, gateway_route=await gateway_route(alias),
                 answered_by=responses[-1].model_name if responses else None,
                 tokens={"in": sum(r.usage.input_tokens for r in responses), "out": sum(r.usage.output_tokens for r in responses)},
-                tools=[{"skill": n, "args": a} for n, a, _ in calls], result=result.dump())
+                tools=[{"skill": n, "args": a} for n, a, _ in calls], scheduling=scheduling, result=result.dump())
     return result, trace

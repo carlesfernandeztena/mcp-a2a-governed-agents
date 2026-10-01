@@ -10,6 +10,7 @@ from urllib.parse import quote
 import httpx
 
 from harness import audit, badges
+from harness.contract import serial_of  # noqa: F401  (re-exported for the skills)
 from harness.policy import Denied, check_skill_call
 from harness.rules import rules
 
