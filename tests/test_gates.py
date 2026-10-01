@@ -62,6 +62,10 @@ def test_number_check_ignores_ids_codes_durations_and_reads_commas():
     assert numbers_match("TEL-5123-2026-10-01", "Freezer 5123 (Cryonix 80): E47 since 1 Oct 2026, −80.0 → -74,0 °C over 14 days", cited, "5123")
     assert not numbers_match("TEL-5123-2026-10-01", "Cabinet at -72.5 °C", cited, "5123")
     assert not numbers_match("TEL-5123-2026-10-01", "Cabinet at 74.0 °C", cited, "5123")      # sign matters
+    # comparing a reading with the manual's range: the range numbers come from the cited manual section
+    claim = "current 4.4 A; the manual's normal range is 3.8–4.8 A and slow recovery is above 30 min"
+    assert numbers_match("TEL-5123-2026-10-01", claim, cited + ["MAN-CX80-E47"], "5123")
+    assert not numbers_match("TEL-5123-2026-10-01", claim, cited, "5123")                     # without the manual cited
 
 
 def test_a_gate_fails_if_any_of_its_cases_fails():

@@ -67,13 +67,16 @@ def numbers_match(ref: str, claim: str, cited: list[str] = (), serial: str | Non
     simplification: a number that happens to appear in another column of a cited day also passes; stricter = per-field matching."""
     if not ref.startswith("TEL-"):
         return True
-    text = re.sub(r"(\d),(\d)", r"\1.\2", claim.replace("−", "-").replace("–", "-"))   # unicode minus, decimal commas
+    text = re.sub(r"(\d),(\d)", r"\1.\2", claim.replace("−", "-"))   # unicode minus, decimal commas
     if serial:
         text = re.sub(rf"\b{serial}\b", " ", text)
     text = NOT_MEASUREMENTS.sub(" ", text)
+    text = re.sub(r"(\d)\s*[–-]\s*(\d)", r"\1 \2", text).replace("–", "-")   # ranges like 3.8–4.8 are two numbers, not a minus
     freezer = ref.rsplit("-", 3)[0]
     values = [float(v) for r in {ref, *(c for c in cited if c.startswith(freezer + "-") and c in TELEMETRY)}
               for v in TELEMETRY[r].values() if re.fullmatch(r"-?\d+(\.\d+)?", v)]
+    # a reading is often compared with the manual's threshold: numbers from cited manual sections count too
+    values += [float(n) for c in cited if c in MANUAL for n in re.findall(r"-?\d+(?:\.\d+)?", MANUAL[c].replace("−", "-"))]
     return all(any(abs(float(n) - v) <= 0.05 for v in values) for n in re.findall(r"-?\d+(?:\.\d+)?", text))
 
 
