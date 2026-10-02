@@ -41,7 +41,7 @@ Needs Docker Compose ≥ 2.24 and an OpenAI API key. Scenes that ask the agent a
 cp .env.example .env          # add OPENAI_API_KEY (and ANTHROPIC_API_KEY for the swap)
 docker compose up -d --build  # gateway, data products, 3 MCP skills, scheduling agent, sandbox skill build
 source scripts/demo.sh        # the `demo` command, with tab completion (needs uv: https://docs.astral.sh/uv/)
-demo                          # lists every command; `demo <command> -h` lists who, which freezers and examples
+demo                          # lists every command and the suggested demo path; `demo <command> -h` lists who, which freezers and examples
 ```
 
 Without uv: `alias demo='docker compose run --rm cli python -m cli'` gives the same commands, except the ones that drive Docker (`gateway use`, `stop`, `start`, `eval --background`). No Docker? `scripts/local.sh` runs every service as a local process.
@@ -70,7 +70,7 @@ Local demo only: the gateway is unauthenticated, so ports are bound to `127.0.0.
 agents/triage/       Pydantic AI agent + harness post-processing      skills/        3 MCP servers
 agents/scheduling/   A2A server (deterministic)                       dataproducts/  FastAPI over data/
 harness/             badges, policy, contract, audit, registry        gateway/       LiteLLM config
-evals/               cases, gates, runner, consistency check          cli/           ask, skill, approve, view
+evals/               cases, gates, runner, consistency check          cli/           the `demo` command (scripts/demo.sh)
 data/                synthetic data (+ WHY.md: why each record exists) docs/         rules, contract, stack, path to production
 ```
 
