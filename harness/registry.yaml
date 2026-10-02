@@ -1,5 +1,7 @@
 # Registry of skills and agents. Tiers are computed from manifests (R-RSK-1) — nobody declares them.
-# `certified_tier` is written by the promotion step (evals/run.py) after all gates pass (R-CRT-1).
+# `certified_tier` is kept in step with the promotion decisions by hand: `demo eval` records CERTIFIED or BLOCKED
+# in the audit log (R-CRT-1) but does not write this file. In production the promotion step writes it
+# (docs/PATH_TO_PRODUCTION.md), so certification is the only way to raise a tier.
 # An agent may only call what its manifest lists, and only up to its certified tier (R-RSK-3).
 agents:
   triage-agent:
