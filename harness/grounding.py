@@ -53,6 +53,9 @@ def belongs(ref: str, record, serial: str | None) -> bool:
     return ref == f"INS-{serial}" or ref.startswith(f"TEL-{serial}-")
 
 
+############################################################
+# Grounding check: shared by gate G2 and the runtime validator
+############################################################
 def problems(evidence: list[dict], records: dict, serial: str | None, must_cite: list[str] = ()) -> list[str]:
     """Everything wrong with an answer's evidence, given the records it may cite (ref → record dict or manual text)."""
     refs = [e["ref"] for e in evidence]

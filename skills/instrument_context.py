@@ -8,6 +8,9 @@ from skills._skill import Call, blocked, latest_fresh, run, seg, serial_of
 mcp = MCPServer("instrument-context", instructions="Everything known about one freezer, for diagnosis.")
 
 
+############################################################
+# Sample risk decided in code: telemetry wins over a reported reading
+############################################################
 def sample_risk(latest: dict | None, reported_temp_c: float | None) -> tuple[bool | None, str | None, bool]:
     """R-DGN-7 in code. Records win over claims (R-SAF-4): fresh telemetry decides; a display temperature the
     engineer reports is used only when there is no fresh telemetry. If the report contradicts fresh telemetry,

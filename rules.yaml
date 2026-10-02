@@ -5,6 +5,9 @@ timezone: "+02:00"            # local time of every site we serve (EMEA); NA sit
 access:                         # R-ACC-1: territory of each country
   territories: {"ES": EMEA, "NO": EMEA, "US": NA}   # quoted: unquoted NO is YAML for false (the "Norway problem")
 
+############################################################
+# Risk tiers: what each skill can read or change
+############################################################
 tiers:                          # T1 look · T2 customer data · T3 act · T4 regulated
   skills:
     search_manuals: 1

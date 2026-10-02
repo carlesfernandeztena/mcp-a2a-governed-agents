@@ -48,6 +48,9 @@ def _same(actual, expected) -> bool:
     return actual == expected
 
 
+############################################################
+# Eval gates G1-G3: how each answer is graded, in code
+############################################################
 def check(case: dict, result: dict) -> dict[str, list[str]]:
     """Returns failure reasons per check family: 'action' (G1/G3) and 'grounding' (G2)."""
     if result.get("status") == "error":  # a crash never passes anything

@@ -53,11 +53,17 @@ class Stop(Exception):
         self.answer = answer
 
 
+############################################################
+# LLM gateway: the agent only ever asks for an alias
+############################################################
 def gateway_model(alias: str = "triage-llm") -> Model:
     """Agents only ever know the gateway alias; which provider serves it is the gateway's business."""
     return OpenAIChatModel(alias, provider=LiteLLMProvider(api_base=GATEWAY_URL))
 
 
+############################################################
+# A2A handoff to Field Ops' scheduling agent
+############################################################
 async def schedule(headers: dict, serial: str, urgency: str) -> dict:
     """A2A handoff to Field Ops' scheduling-agent, carrying the same badge. Returns its answer, or an error."""
     try:
@@ -113,6 +119,9 @@ def _context(calls: list[tuple[str, dict, dict]]) -> dict | None:
     return next((r for name, _, r in calls if name == "get_instrument_context" and "instrument" in r), None)
 
 
+############################################################
+# Grounding check at answer time (same code as gate G2)
+############################################################
 def runtime_problems(draft: TriageDraft, calls: list[tuple[str, dict, dict]], serial: str | None) -> list[str]:
     """Grounding problems in a draft, judged only against records the skills returned in this run. Required
     citations follow from facts code already knows: fresh telemetry must be cited; samples at risk must cite the
@@ -140,6 +149,9 @@ def runtime_problems(draft: TriageDraft, calls: list[tuple[str, dict, dict]], se
     return found
 
 
+############################################################
+# Output contract: code builds the final answer from the LLM draft
+############################################################
 def assemble(draft: TriageDraft | None, calls: list[tuple[str, dict, dict]], stop: dict | None = None) -> TriageResult:
     """Harness post-processing: build the result from the LLM draft plus what the skills returned."""
     if stop and "denied" in stop:
@@ -169,6 +181,9 @@ def assemble(draft: TriageDraft | None, calls: list[tuple[str, dict, dict]], sto
     return TriageResult(**fields)
 
 
+############################################################
+# Agentic loop and harness
+############################################################
 async def triage(question: str, user: str, agent_id: str = "triage-agent", model: Model | None = None,
                  trace: str | None = None, eval_case: str | None = None) -> tuple[TriageResult, str]:
     trace = trace or audit.new_trace()

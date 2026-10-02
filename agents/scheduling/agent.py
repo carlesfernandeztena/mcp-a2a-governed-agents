@@ -51,6 +51,9 @@ def earliest_slot(country: str) -> dict | None:
     return slots[0] if slots else None
 
 
+############################################################
+# Field Ops' scheduling agent: plain code behind A2A, no LLM
+############################################################
 def propose_visit(instrument: dict, urgency: str) -> dict:
     due = deadline(instrument["contract_tier"], urgency)
     slot = earliest_slot(instrument["country"])
