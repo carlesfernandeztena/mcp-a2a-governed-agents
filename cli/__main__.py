@@ -97,32 +97,55 @@ def overview() -> str:
     width = max(len(n) for n, _, _ in COMMANDS)
     lines = [f"  {n:<{width}}  {d}" for n, _, d in COMMANDS]
     return (f"{BLURB}\n\nusage: demo <command> [...]     demo <command> -h for who / what / examples\n\n"
-            + "\n".join(lines) + "\n\nTab completes commands, people, serials, parts and services.\n\n" + demo_path())
+            + "\n".join(lines) + "\n\nTab completes commands, people, serials, parts and services.")
 
 
 HAPPY = '"Cryonix 80 SN 5123 at BarnaLabs, error E-47, temperature creeping up."'
-PATH = [  # (command, what it shows): the demo in order
-    ("demo follow", "(second terminal) live audit stream, keep it open"),
-    ("demo eval rc --background", "a candidate with a parts-skill bug goes through the gates"),
-    (f"demo ask yusuf {HAPPY}", "happy path: diagnosis, part, visit over A2A"),
-    ("demo view", "audit card: who, what it saw, which model"),
-    ("demo approve yusuf", "refused: engineers don't approve"),
-    ("demo approve grant", "approved; ERP stubbed"),
-    ("demo skill order 5123 GK-80-A", "the plausible wrong part, refused by code"),
-    ('demo ask yusuf "Faraway Pharma in Boston reports E-47 on SN 7001."', "denied: territory"),
-    ("demo registry", "computed vs certified tier"),
-    ('demo ask consuelo "Order a GasketKit 80-B for SN 5123 at BarnaLabs."', "denied: tier"),
-    ("demo eval last", "the candidate: BLOCKED"),
-    ("demo promotions", "every promotion decision"),
-    ("demo gateway use sonnet", "provider swap: one line"),
-    (f"demo ask yusuf {HAPPY}", "same question, other provider; then demo view"),
-    ("demo stop scheduling-agent", "break a seam; ask again, then demo start scheduling-agent"),
-    ("demo stubs", "the two deliberate stubs"),
+PATH = [  # (block, [(command, what it shows)]): the demo in order, one block per thing it proves
+    ("Before you start", [("demo follow", "(second terminal) live audit stream, keep it open")]),
+    ("1 · The gates start working", [("demo eval rc --background", "a candidate with a parts-skill bug goes through the gates")]),
+    ("2 · The happy path, end to end", [
+        (f"demo ask yusuf {HAPPY}", "diagnosis, part, visit over A2A"),
+        ("demo view", "audit card: who, what it saw, which model"),
+        ("demo approve yusuf", "refused: engineers don't approve"),
+        ("demo approve grant", "approved; ERP stubbed")]),
+    ("3 · What code refuses", [
+        ("demo skill order 5123 GK-80-A", "the plausible wrong part, refused by code"),
+        ('demo ask yusuf "Faraway Pharma in Boston reports E-47 on SN 7001."', "denied: territory"),
+        ("demo registry", "computed vs certified tier"),
+        ('demo ask consuelo "Order a GasketKit 80-B for SN 5123 at BarnaLabs."', "denied: tier")]),
+    ("4 · The gates decided (wait for the red BLOCKED line)", [
+        ("demo eval last", "the candidate: BLOCKED"),
+        ("demo promotions", "every promotion decision")]),
+    ("5 · Swap the provider", [
+        ("demo gateway use sonnet", "one line in the gateway config"),
+        (f"demo ask yusuf {HAPPY}", "same question, other provider"),
+        ("demo view", "which model answered")]),
+    ("6 · Break a seam, and the stubs", [
+        ("demo stop scheduling-agent", "another team's agent goes down"),
+        (f"demo ask yusuf {HAPPY}", "proposal stands, no visit, flagged"),
+        ("demo start scheduling-agent", "back up"),
+        ("demo stubs", "the two deliberate stubs")]),
 ]
 
 
-def demo_path() -> str:
-    return "Suggested demo path:\n" + "\n".join(f"  {i:>2}. {c}\n        → {d}" for i, (c, d) in enumerate(PATH, 1))
+def show_path() -> None:
+    from rich.console import Console
+    from rich.markup import escape
+    from rich.table import Table
+    console, n = Console(), 1
+    table = Table.grid(padding=(0, 2))   # one table, so the columns line up across blocks
+    table.add_column(justify="right", style="dim")
+    table.add_column()
+    table.add_column(style="cyan")
+    for block, steps in PATH:
+        table.add_row("", "", "")
+        table.add_row("", f"[bold yellow]{escape(block)}[/]", "")
+        for cmd, what in steps:
+            table.add_row(f"{n}.", escape(cmd), f"→ {escape(what)}")
+            n += 1
+    console.print("[bold]Suggested demo path[/]")
+    console.print(table)
 
 
 def _host_only(what: str) -> None:
@@ -311,12 +334,13 @@ def main() -> None:
     s = sub.add_parser("stubs", help="the two stubs", description="The two deliberate stubs, marked with a STUB comment in the code.")
     s.set_defaults(run=lambda a: subprocess.run(["grep", "-rnI", "-A2", "--include=*.py", "# STUB[:]", "harness", "cli"], cwd=ROOT, check=False))
 
-    sub.add_parser("path", help="suggested demo path").set_defaults(run=lambda a: print(demo_path()))
+    sub.add_parser("path", help="suggested demo path").set_defaults(run=lambda a: show_path())
     sub.add_parser("who", help="people and agents").set_defaults(run=lambda a: print(who_text()))
     sub.add_parser("freezers", help="the installed base").set_defaults(run=lambda a: print(f"{freezers_text()}\n\n{parts_text()}"))
 
     if len(sys.argv) == 1:
-        print(overview())
+        print(overview() + "\n")
+        show_path()
         return
     a = p.parse_args()
     try:
