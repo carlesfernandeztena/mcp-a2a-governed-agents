@@ -102,8 +102,8 @@ def overview() -> str:
 
 HAPPY = '"Cryonix 80 SN 5123 at BarnaLabs, error E-47, temperature creeping up."'
 PATH = [  # (block, [(command, what it shows)]): the demo in order, one block per thing it proves
-    ("Before you start", [("demo follow", "(second terminal) live audit stream, keep it open")]),
-    ("1 · The gates start working", [("demo eval rc --background", "a candidate with a parts-skill bug goes through the gates")]),
+    ("Before you start", [("demo follow", "second terminal: live audit stream")]),
+    ("1 · The gates start working", [("demo eval rc --background", "buggy candidate goes through the gates")]),
     ("2 · The happy path, end to end", [
         (f"demo ask yusuf {HAPPY}", "diagnosis, part, visit over A2A"),
         ("demo view", "audit card: who, what it saw, which model"),
@@ -136,7 +136,7 @@ def show_path() -> None:
     console, n = Console(), 1
     table = Table.grid(padding=(0, 2))   # one table, so the columns line up across blocks
     table.add_column(justify="right", style="dim")
-    table.add_column()
+    table.add_column(no_wrap=True)   # a command never wraps: it stays copy-pasteable
     table.add_column(style="cyan")
     for block, steps in PATH:
         table.add_row("", "", "")
