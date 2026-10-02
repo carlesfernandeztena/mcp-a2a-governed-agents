@@ -38,6 +38,9 @@ async def run_all(cases: list[dict], parallel: int = 4) -> dict[str, dict]:
     return dict(await asyncio.gather(*(one(c) for c in cases)))
 
 
+############################################################
+# Promotion decision: every case, every run green, or blocked
+############################################################
 def decide(cases: list[dict], runs: list[dict], repeat: int, subset: bool = False) -> tuple[str, dict, dict]:
     """R-CRT-1: certified only for a full suite, at least rules.yaml certification.runs runs, every one all green.
     Returns (decision, failures per gate across runs with the run number, per-case pass rate for any case that failed)."""

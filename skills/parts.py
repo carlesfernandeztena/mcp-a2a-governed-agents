@@ -13,6 +13,9 @@ VERSION = os.environ.get("PARTS_SKILL_VERSION", "1.0")
 mcp = MCPServer("parts", instructions="Propose a parts order; every proposal is checked against the records.")
 
 
+############################################################
+# Planted bug: candidate v0.4 guesses the revision (demo eval rc)
+############################################################
 def revision_of(instrument: dict) -> str:
     if VERSION == "0.4":
         # Deliberate regression for demo scene SC7: v0.4 "saves a lookup" by deriving the revision from the
@@ -36,6 +39,9 @@ def evidence(latest: dict | None) -> set[str]:
     return shown
 
 
+############################################################
+# Ordering rules: why the plausible wrong part is refused
+############################################################
 def check(part: dict | None, instrument: dict, records: list[dict], latest: dict | None, qty: int) -> tuple[str, str] | None:
     """Returns (reason, rule) for a refusal, or None if the proposal is acceptable. Order = cheapest check first."""
     if part is None:

@@ -14,6 +14,9 @@ def new_trace() -> str:
     return uuid.uuid4().hex[:12]
 
 
+############################################################
+# Audit log: one line per action, from every component
+############################################################
 def write(trace: str, component: str, action: str, badge: dict | None = None, **detail) -> dict:
     """simplification: append-only local file; production = tamper-evident store with retention (PATH_TO_PRODUCTION).
     Identity fields come from the verified badge and are written last, so `detail` can never overwrite them."""

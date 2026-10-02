@@ -9,6 +9,9 @@ class Denied(Exception):
         self.reason, self.enforced_at, self.detail = reason, enforced_at, detail
 
 
+############################################################
+# Risk tiers and inheritance: computed, never declared
+############################################################
 def skill_tier(skill: str) -> int:
     try:
         return rules()["tiers"]["skills"][skill]
@@ -41,6 +44,9 @@ def check_skill_call(badge: dict, skill: str) -> None:
         raise Denied("tier", "harness", f"{badge['act']['sub']} is certified T{agent['certified_tier']}, {skill} is T{skill_tier(skill)}")
 
 
+############################################################
+# Entitlement at the data door: territory and regulated records
+############################################################
 def check_instrument_access(badge: dict, instrument: dict, enforced_at: str) -> None:
     """R-ACC-1 territory (who is asking) and R-RSK-2 regulated data (what is being asked)."""
     agent = check_agent(badge)

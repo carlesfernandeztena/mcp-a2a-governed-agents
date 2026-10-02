@@ -1,5 +1,8 @@
 # The model gateway seam. Agents only ever ask for the alias "triage-llm".
 # LIVE SWAP: change the one `model:` line under triage-llm, then `docker compose restart gateway`.
+############################################################
+# LLM gateway config: the model line under triage-llm is the swap
+############################################################
 model_list:
   - model_name: triage-llm
     litellm_params:
